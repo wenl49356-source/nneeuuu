@@ -1,0 +1,2923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+    <title>AI Launcher Pro</title>
+    <style>
+        :root {
+            --bg-color: #FFFFFF; 
+            --glass-bg: rgba(255, 255, 255, 0.75); 
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-main: #000000;
+            --accent-blue: #0A84FF;
+            --dock-bg: rgba(0, 0, 0, 0.05);
+            --kakao-yellow: #FEE500;
+            --kakao-chat-bg: #ABC1D1; 
+            --chat-bg-img: none; 
+            --default-avatar: url('微信图片_20260307234707_22_2.jpg'); 
+            --font-scale: 1;
+            
+            /* 智能安全区计算：完美适配苹果/安卓全面屏，绝不重叠 */
+            --safe-top: max(env(safe-area-inset-top), 15px);
+            --safe-bottom: max(env(safe-area-inset-bottom), 15px);
+            --status-bar-height: calc(30px + var(--safe-top));
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body {
+            width: 100vw;
+            height: 100dvh; 
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            background-size: cover; 
+            background-position: center; 
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            overscroll-behavior: none;
+        }
+
+        /* 强制隐去占位背景，让 body 的壁纸透出来，解决上下白边问题 */
+        #app-bg {
+            display: none !important;
+        }
+
+        /* --- 仿 iOS 状态栏 --- */
+        #ios-status-bar {
+            position: fixed; top: 0; left: 0; width: 100%; 
+            height: var(--status-bar-height);
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: var(--safe-top) 22px 0 22px; 
+            z-index: 99999; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            font-size: 14px; font-weight: 700; color: var(--text-main); letter-spacing: -0.2px;
+            pointer-events: none;
+        }
+        .status-right { display: flex; align-items: center; gap: 6px; }
+        .status-right svg { fill: currentColor; height: 11px; }
+        .battery-icon { position: relative; width: 23px; height: 12px; border: 1px solid var(--text-main); border-radius: 4px; padding: 1px; display: flex; align-items: center; opacity: 1;}
+        .battery-icon::after { content: ''; position: absolute; right: -3.5px; top: 50%; transform: translateY(-50%); width: 2.5px; height: 4px; background: var(--text-main); border-radius: 0 2px 2px 0; }
+        .battery-level { height: 100%; background: var(--text-main); border-radius: 2px; width: 100%; transition: width 0.3s; }
+        .battery-charging { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px !important; height: 8px !important; fill: var(--bg-color) !important; z-index: 2; display: none; }
+        .is-charging .battery-charging { display: block; }
+        .is-charging .battery-level { background: #34C759 !important; }
+        #status-network { font-weight: 600; font-size: 13px; margin-right: 2px; }
+
+        .page { 
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            width: 100vw; height: 100dvh; 
+            display: none; flex-direction: column; z-index: 10; 
+            overflow-y: auto; overflow-x: hidden;
+            -webkit-overflow-scrolling: touch; 
+            padding-bottom: calc(120px + var(--safe-bottom)); 
+            background: var(--bg-color); 
+        }
+        .active { display: flex; }
+        #home { background: transparent; }
+
+        /* --- 主页名片区 --- */
+        .profile-card {
+            width: 90%; 
+            margin: calc(10px + var(--status-bar-height)) auto 20px;
+            background: var(--glass-bg); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border-radius: 30px; border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.03);
+            display: flex; flex-direction: column; align-items: center; padding-bottom: 20px; overflow: hidden;
+        }
+        .header-banner { width: 100%; height: 140px; background-image: url('https://images.unsplash.com/photo-1518173946687-a4c8a9b749f5?q=80&w=1000'); background-size: cover; background-position: center; cursor: pointer; }
+        .avatar-container { width: 80px; height: 80px; margin-top: -40px; border-radius: 50%; padding: 3px; background: rgba(255, 255, 255, 0.9); }
+        .avatar { width: 100%; height: 100%; border-radius: 50%; background-size: cover; background-position: center; cursor: pointer; background-image: var(--default-avatar); }
+        .profile-info { text-align: center; margin-top: 8px; width: 100%; padding: 0 15px; }
+        .editable { cursor: pointer; outline: none; border-radius: 4px; display: inline-block; }
+        .nickname { font-size: calc(19px * var(--font-scale)); font-weight: 800; font-family: "Georgia", serif; display: block; }
+        .user-id { font-size: calc(11px * var(--font-scale)); color: #AAA; margin-bottom: 8px; display: block; }
+        .bio { font-size: calc(12.5px * var(--font-scale)); color: #555; margin-bottom: 6px; display: block; font-weight: 500; }
+        .location-container { display: flex; align-items: center; justify-content: center; gap: 4px; color: #999; }
+        .location-container svg { width: 12px; height: 12px; fill: currentColor; }
+        .location { font-size: calc(10.5px * var(--font-scale)); display: block; }
+
+        /* --- 主页布局 --- */
+        .home-main-layout { display: grid; grid-template-columns: 1.1fr 1fr; gap: 15px; padding: 0 5%; align-items: stretch; }
+        .chat-widget { background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 28px; padding: 18px 12px; display: flex; flex-direction: column; justify-content: center; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); }
+        .bubble { font-size: calc(11px * var(--font-scale)); padding: 10px 14px; border-radius: 18px; max-width: 85%; line-height: 1.4; outline: none; position: relative; }
+        .bubble-gray { background: #EBEBEB; color: #444; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .bubble-white { background: #FFFFFF; color: #000; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+        .icon-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .app-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        .icon-box { width: 62px; height: 62px; background-color: #F8F8F8; border-radius: 20px; display: flex; justify-content: center; align-items: center; border: 1px solid rgba(0,0,0,0.04); overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.02); background-size: cover; background-position: center; }
+        .icon-box svg { width: 28px; height: 28px; stroke: #333; stroke-width: 1.5; fill: none; }
+        .app-name { font-size: calc(11px * var(--font-scale)); text-align: center; font-weight: 600; color: #444; margin-top: 6px; }
+
+        .home-footer-widget {
+            width: 90%; margin: 25px auto 0;
+            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 22px;
+            padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.02);
+        }
+        .widget-left { display: flex; flex-direction: column; gap: 2px; }
+        .widget-text { font-size: calc(11px * var(--font-scale)); font-weight: 600; color: #333; outline: none; }
+        .widget-subtext { font-size: calc(9px * var(--font-scale)); color: #999; outline: none; }
+        .widget-actions { display: flex; gap: 12px; align-items: center; }
+        .widget-action-item { display: flex; align-items: center; gap: 4px; color: #555; font-size: calc(10px * var(--font-scale)); font-weight: 500; outline: none; }
+        .widget-action-item svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+        /* --- 修正主页底部 Dock 的安全区垫起与带名称排版 --- */
+        .dock-container { position: fixed; bottom: calc(20px + var(--safe-bottom)); left: 0; width: 100%; display: flex; justify-content: center; z-index: 100; }
+        .dock { width: 92%; height: 90px; background-color: var(--dock-bg); backdrop-filter: blur(30px); border-radius: 28px; display: flex; justify-content: space-around; align-items: center; border: 1px solid rgba(0,0,0,0.05); padding: 0 10px; }
+        .dock-item-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; flex: 1; }
+        .dock-item { width: 46px; height: 46px; border-radius: 14px; background-color: rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; background-size: cover; background-position: center; }
+        .dock-item svg { width: 24px; height: 24px; stroke: #333; stroke-width: 1.8; fill: none; }
+        .dock-label { font-size: calc(11px * var(--font-scale)); font-weight: 600; color: #333; }
+
+        /* --- KakaoTalk 页面样式 --- */
+        .kakao-header-v2 {
+            padding: calc(15px + var(--status-bar-height)) 20px 15px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: white; position: sticky; top: 0; z-index: 100;
+        }
+        .kakao-header-v2 .title { font-size: calc(24px * var(--font-scale)); font-weight: 800; color: #000; letter-spacing: -0.5px; }
+        .kakao-header-v2 .icons { display: flex; gap: 18px; align-items: center; position: relative; }
+        .kakao-header-v2 .icons svg { width: 22px; height: 22px; stroke: #000; fill: none; stroke-width: 1.8; cursor: pointer; }
+
+        .kakao-profile-section { padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .kakao-profile-section .user-info { display: flex; align-items: center; gap: 15px; }
+        .kakao-profile-section .ava { width: 65px; height: 65px; border-radius: 26px; background-size: cover; background-position: center; background-image: var(--default-avatar); cursor: pointer; }
+        .kakao-profile-section .name { font-size: calc(20px * var(--font-scale)); font-weight: 700; color: #000; }
+        .kakao-profile-section .profile-plus { padding: 4px 12px; border: 1px solid #E0E0E0; border-radius: 15px; font-size: calc(13px * var(--font-scale)); font-weight: 500; color: #666; }
+
+        .kakao-divider { height: 1px; background: #F3F3F3; margin: 0 20px; }
+        .kakao-list-group { padding: 15px 20px 5px; display: flex; justify-content: space-between; align-items: center; }
+        .kakao-list-group span { font-size: calc(13px * var(--font-scale)); color: #8C8C8C; font-weight: 500; }
+        .kakao-list-group svg { width: 14px; height: 14px; stroke: #8C8C8C; fill: none; }
+
+        .kakao-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; cursor: pointer; }
+        .kakao-item .icon-box-k { width: 44px; height: 44px; border-radius: 16px; background: #EEE; display: flex; justify-content: center; align-items: center; overflow: hidden; background-size: cover; background-position: center; }
+        .kakao-item .icon-yellow { background: #FEE500; }
+        .kakao-item .icon-yellow svg { width: 22px; height: 22px; fill: #3C1E1E; stroke: none; }
+        .kakao-item .content-k { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .kakao-item .name-k { font-size: calc(15px * var(--font-scale)); font-weight: 600; color: #000; margin-bottom: 2px; }
+        .kakao-item .status-k { font-size: calc(12px * var(--font-scale)); color: #8C8C8C; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+        .kakao-item .chevron-k { width: 16px; height: 16px; stroke: #E0E0E0; fill: none; }
+
+        .kakao-nav-v2 { height: calc(60px + var(--safe-bottom)); border-top: 1px solid #F0F0F0; display: flex; background: #FFF; position: fixed; bottom: 0; width: 100%; z-index: 300; padding-bottom: var(--safe-bottom); }
+        .nav-tab-v2 { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; color: #000; }
+        .nav-tab-v2 svg { width: 26px; height: 26px; fill: currentColor; stroke: none; }
+        .nav-tab-v2.dimmed { color: #CCCCCC; }
+
+        /* 通用设置页 */
+        .settings-page { background: #F2F2F7; }
+        .input-card { background: white; border-radius: 15px; padding: 5px; margin: 12px 15px; border: 1px solid #DDD; overflow: hidden; }
+        .input-row { padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid #EEE; cursor: pointer; }
+        .input-row:last-child { border-bottom: none; }
+        
+        input[type="file"] { display: none; }
+
+        .action-menu { position: absolute; background: white; border: 1px solid #EEE; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; z-index: 100; overflow: hidden; min-width: 120px; }
+        .menu-item { padding: 16px 20px; font-size: calc(15px * var(--font-scale)); cursor: pointer; border-bottom: 0.5px solid #F5F5F5; color: #333; }
+        .menu-item:last-child { border-bottom: none; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: none; justify-content: center; align-items: center; z-index: 2000; }
+        .post-modal { background: white; width: 85%; max-width: 400px; border-radius: 20px; padding: 20px; position: relative; }
+
+        .scheme-item { padding: 15px; border-bottom: 1px solid #EEE; text-align: center; cursor: pointer; user-select: none; -webkit-user-select: none; font-size: calc(14px * var(--font-scale)); color: #333; }
+        .scheme-item:last-child { border-bottom: none; }
+        .scheme-item:active { background: #F5F5F5; }
+
+        /* --- KKT 聊天页面 --- */
+        .chat-view { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background: var(--kakao-chat-bg); z-index: 500; display: none; flex-direction: column; }
+        .chat-view-header { background: #FFFFFF; padding: calc(12px + var(--status-bar-height)) 15px 12px; display: flex; align-items: center; justify-content: space-between; position: relative; flex-shrink: 0; }
+        .chat-header-title-container { position: absolute; left: 50%; transform: translateX(-50%); font-size: calc(17px * var(--font-scale)); font-weight: 700; color: #000; pointer-events: none; bottom: 12px; }
+        .chat-view-header-icons { display: flex; align-items: center; gap: 15px; }
+
+        .chat-view-content { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding: 15px; display: flex; flex-direction: column; gap: 15px; background-color: var(--kakao-chat-bg); background-image: var(--chat-bg-img); background-size: cover; background-position: center; }
+        .date-bubble { align-self: center; background: rgba(0,0,0,0.15); color: white; padding: 4px 15px; border-radius: 15px; font-size: calc(11px * var(--font-scale)); margin: 10px 0; }
+        
+        .msg-wrap { display: flex; align-items: flex-start; gap: 8px; width: 100%; position: relative; }
+        .msg-right { flex-direction: row-reverse; }
+        .msg-ava { width: 40px; height: 40px; border-radius: 15px; background-size: cover; background-position: center; flex-shrink: 0; }
+        .msg-content-area { display: flex; flex-direction: column; max-width: 70%; }
+        .msg-nick { font-size: calc(11px * var(--font-scale)); color: #555; margin-bottom: 4px; }
+        
+        .bubble-row { display: flex; align-items: flex-end; gap: 5px; }
+        .msg-right .bubble-row { flex-direction: row-reverse; }
+
+        .msg-bubble { padding: 8px 12px; border-radius: 15px; font-size: calc(14px * var(--font-scale)); line-height: 1.4; background: white; color: black; position: relative; word-break: break-word; user-select: none; -webkit-user-select: none; }
+        .msg-right .msg-bubble { background: var(--kakao-yellow); border-top-right-radius: 2px; }
+        .msg-left .msg-bubble { border-top-left-radius: 2px; }
+        
+        .msg-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+        .msg-right .msg-meta { align-items: flex-end; }
+        .msg-read { color: #555; font-size: calc(10px * var(--font-scale)); font-weight: 700; }
+        .msg-time { color: #666; font-size: calc(10px * var(--font-scale)); }
+
+        .translate-divider { border-top: 1px dashed #E0E0E0; margin: 6px 0; padding-top: 6px; }
+        .translated-text { font-size: calc(13px * var(--font-scale)); color: #666; line-height: 1.4; word-break: break-word; }
+
+        .msg-bubble[data-type="voice"] { background: white !important; padding: 0 !important; overflow: hidden; border: 1px solid rgba(0,0,0,0.05); }
+        .msg-right .msg-bubble[data-type="voice"] { border-top-right-radius: 2px; }
+        .msg-left .msg-bubble[data-type="voice"] { border-top-left-radius: 2px; }
+
+        /* 转账气泡 */
+        .msg-bubble[data-type="transfer"] { padding: 0 !important; background: transparent !important; border: none !important; }
+        .transfer-bubble { width: 230px; border-radius: 16px; overflow: hidden; background: #FFF; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: left; }
+        .transfer-top { background: #FEE500; padding: 15px; position: relative; height: 85px; }
+        .transfer-title { font-size: 16px; font-weight: 800; color: #3C1E1E; }
+        .transfer-icon { position: absolute; right: 10px; bottom: 0; width: 65px; height: 65px; }
+        .transfer-bottom { padding: 15px; }
+        .transfer-amount { font-size: 15px; font-weight: 800; color: #000; margin-bottom: 5px; }
+        .transfer-note { font-size: 12px; color: #888; line-height: 1.4; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .transfer-action { border-top: 1px solid #F0F0F0; padding-top: 12px; display: flex; justify-content: center; align-items: center; position: relative; cursor: pointer; }
+        .transfer-kpay { position: absolute; left: 0; font-size: 11px; font-weight: 800; color: #000; display: flex; align-items: center; gap: 3px; }
+        .transfer-kpay-dot { width: 12px; height: 12px; background: #FEE500; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 8px; color: #3C1E1E; font-weight: 900; }
+        .transfer-action-text { font-size: 13px; color: #333; font-weight: 600; display: flex; align-items: center; }
+        .transfer-action-text svg { width: 14px; height: 14px; stroke: #999; margin-left: 2px; }
+        
+        /* 底部输入框 */
+        .chat-bottom-wrapper { background: white; padding-bottom: max(env(safe-area-inset-bottom), 12px); flex-shrink: 0; width: 100%; }
+        .chat-input-bar { background: white; padding: 8px 16px; display: flex; align-items: center; gap: 12px; }
+        .chat-action-icon { width: 32px; height: 32px; cursor: pointer; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+        .chat-action-icon > svg { width: 26px; height: 26px; display: block; flex-shrink: 0; }
+        .chat-input-wrapper { flex: 1; background: #F5F5F5; display: flex; align-items: center; border-radius: 20px; padding: 6px 14px; height: 40px; }
+        .chat-input { flex: 1; border: none; background: transparent; outline: none; font-size: calc(15px * var(--font-scale)); padding: 0; height: 100%; color: #000; min-width: 0; }
+        .chat-input-icon { width: 24px; height: 24px; stroke: #888; fill: none; margin-left: 8px; cursor: pointer; flex-shrink: 0; display: block; }
+
+        .attach-menu { display: none; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 20px; background: #F8F8F8; border-top: 1px solid #E5E5EA; }
+        .attach-item { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
+        .attach-icon-box { width: 50px; height: 50px; border-radius: 14px; background: white; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .attach-icon-box svg { width: 24px; height: 24px; stroke: #333; stroke-width: 1.5; }
+        .attach-item span { font-size: calc(11px * var(--font-scale)); color: #555; }
+
+        .action-popup { position: absolute; background: white; border-radius: 16px; padding: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); width: max-content; max-width: 90vw; z-index: 2001; }
+        .action-popup-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .action-popup-btn { background: #F5F5F5; border-radius: 10px; padding: 12px 0; min-width: 60px; font-size: calc(13.5px * var(--font-scale)); color: #000; font-weight: 500; text-align: center; cursor: pointer; white-space: nowrap; display: flex; justify-content: center; align-items: center; }
+        .action-popup-btn:active { background: #EBEBEB; }
+        .action-popup-btn.delete-btn { color: #FF3B30; }
+
+        .settings-header { padding: calc(15px + var(--status-bar-height)) 15px 15px; background: white; display: flex; align-items: center; justify-content: space-between; font-weight: 700; border-bottom: 1px solid #EEE; position: sticky; top: 0; z-index: 10; font-size: calc(16px * var(--font-scale)); }
+        .settings-group { margin-top: 20px; }
+        .settings-label { padding: 0 20px 8px; font-size: calc(12px * var(--font-scale)); color: #888; text-transform: uppercase; }
+        .settings-card { background: white; border-radius: 12px; margin: 0 15px; border: 1px solid #EEE; overflow: hidden; }
+        .settings-item { padding: 12px 15px; border-bottom: 1px solid #F5F5F5; display: flex; align-items: center; justify-content: space-between; }
+        .settings-item:last-child { border-bottom: none; }
+        .settings-item label { font-size: calc(14px * var(--font-scale)); color: #000; font-weight: 500; }
+        .settings-item input[type="text"], .settings-item input[type="password"] { border: none; outline: none; text-align: right; width: 60%; font-size: calc(14px * var(--font-scale)); color: #555; background: transparent; }
+        .settings-item.column { flex-direction: column; align-items: flex-start; }
+        .settings-item textarea.large-box { text-align: left; width: 100%; height: 120px; margin-top: 10px; resize: none; border: 1px solid #E5E5EA; border-radius: 8px; padding: 10px; box-sizing: border-box; background: #F9F9F9; font-family: inherit; font-size: calc(13px * var(--font-scale)); color: #333; outline: none; }
+
+        .wb-toggle-box { width: 100%; border: 1px solid #E5E5EA; padding: 10px 12px; border-radius: 8px; font-size: calc(13px * var(--font-scale)); color: #666; margin-top: 10px; cursor: pointer; background: #F9F9F9; display: flex; justify-content: space-between; align-items: center; }
+        .worldbook-box { display: none; height: 100px; margin-top: 5px; border: 1px solid #E5E5EA; border-radius: 8px; padding: 10px; background: #F9F9F9; width: 100%; box-sizing: border-box; resize: none; outline: none; font-size: calc(13px * var(--font-scale)); color: #333; }
+        
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #34C759; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* ================== 全新 Bubble 页面样式 ================== */
+        .bubble-header { display: flex; justify-content: space-between; align-items: center; padding: calc(15px + var(--status-bar-height)) 20px 10px; position: sticky; top: 0; background: white; z-index: 100; }
+        .bubble-header h1 { font-size: calc(26px * var(--font-scale)); font-weight: 900; letter-spacing: -0.5px; color: #000; margin: 0; }
+        .bubble-header-icons { display: flex; align-items: center; gap: 15px; }
+        .bubble-header-icons svg { width: 24px; height: 24px; }
+        
+        .bubble-sec-title { font-size: calc(12px * var(--font-scale)); color: #888; font-weight: 600; padding: 15px 20px 5px; text-transform: uppercase; }
+        .bubble-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; cursor: pointer; }
+        .bubble-item-left { display: flex; align-items: center; gap: 15px; }
+        .bubble-ava { width: 55px; height: 55px; border-radius: 50%; background-size: cover; background-position: center; border: 1px solid rgba(0,0,0,0.05); }
+        .bubble-name { font-size: calc(16px * var(--font-scale)); font-weight: 700; color: #000; }
+        .bubble-status { font-size: calc(13px * var(--font-scale)); color: #888; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+        
+        .bubble-divider { height: 1px; background: #F3F3F3; margin: 10px 20px; }
+        
+        .bubble-nav { height: calc(55px + var(--safe-bottom)); position: fixed; bottom: 0; width: 100%; display: flex; justify-content: space-around; align-items: center; padding-bottom: var(--safe-bottom); background: #FFF; border-top: 1px solid #EEE; z-index: 300; }
+        .bubble-nav-item { padding: 10px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .bubble-nav-item svg { width: 26px; height: 26px; }
+        .bubble-nav-item.dimmed svg { opacity: 0.3; }
+
+        /* ================== Bubble 聊天界面样式 ================== */
+        #bubble-chat-view { background: #FFFFFF; }
+        .bubble-chat-header { 
+            position: sticky; top: 0; background: white; z-index: 100; flex-shrink: 0; 
+            padding-top: var(--status-bar-height); border-bottom: 1px solid rgba(0,0,0,0.05); 
+        }
+        .bubble-avatar-ring {
+            width: 44px; height: 44px; border-radius: 50%; padding: 2px; 
+            background: linear-gradient(135deg, #a64dff, #d8b4e2); /* 紫色渐变光圈 */
+            flex-shrink: 0; cursor: pointer; display: flex; justify-content: center; align-items: center;
+        }
+        .bubble-artist-badge {
+            background: #A020F0; color: white; font-size: 8px; font-weight: 800; 
+            padding: 2px 5px; border-radius: 8px; margin-right: 4px; vertical-align: middle;
+        }
+        .bubble-msg-plain { font-size: calc(15px * var(--font-scale)); color: #333; line-height: 1.4; word-break: break-word; user-select: none; }
+        
+        .bubble-msg-user { background: #AC81FF !important; color: #FFF !important; }
+        .bubble-msg-user .bubble-msg-plain { color: #FFF !important; }
+
+        /* 引用块样式 */
+        .bubble-quote-block {
+            font-size: calc(13px * var(--font-scale)); color: #666; background: rgba(0,0,0,0.04); 
+            padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #A020F0;
+        }
+
+        /* 夜间模式全局覆盖 */
+        body.dark-mode { --bg-color: #121212; --text-main: #FFFFFF; --glass-bg: rgba(30, 30, 30, 0.85); --glass-border: rgba(255, 255, 255, 0.1); --kakao-chat-bg: #1E1E1E; }
+        body.dark-mode .page { background: #121212; color: #FFF; }
+        body.dark-mode #home { background: transparent; }
+        body.dark-mode .kakao-header-v2, body.dark-mode .kakao-nav-v2, body.dark-mode .chat-input-bar, body.dark-mode .settings-header, body.dark-mode .chat-view-header { background: #1A1A1A; border-color: #333; }
+        body.dark-mode .kakao-header-v2 .title, body.dark-mode .kakao-item .name-k, body.dark-mode .name, body.dark-mode .nickname, body.dark-mode .settings-header div, body.dark-mode .settings-item label, body.dark-mode #chat-header-name { color: #FFF; }
+        body.dark-mode .kakao-header-v2 svg, body.dark-mode .chat-view-header svg { stroke: #FFF; }
+        body.dark-mode .nav-tab-v2 { color: #FFF; }
+        body.dark-mode .nav-tab-v2.dimmed { color: #666; }
+        body.dark-mode .settings-card { background: #1A1A1A; border-color: #333; }
+        body.dark-mode .settings-item, body.dark-mode .kakao-divider, body.dark-mode .input-card, body.dark-mode .input-row { border-color: #333; }
+        body.dark-mode .settings-item input, body.dark-mode .settings-item textarea, body.dark-mode .settings-item select { color: #FFF; }
+        body.dark-mode .settings-item textarea.large-box, body.dark-mode .worldbook-box, body.dark-mode .wb-toggle-box { background: #2A2A2A; border-color: #444; color: #EEE; }
+        body.dark-mode .bubble-white { background: #333; color: #FFF; }
+        body.dark-mode .msg-bubble { background: #333; color: #FFF; }
+        body.dark-mode .msg-right .msg-bubble { background: var(--kakao-yellow); color: #000; }
+        body.dark-mode .chat-bottom-wrapper { background: #1A1A1A; }
+        body.dark-mode .chat-input-wrapper { background: #333; }
+        body.dark-mode .chat-input { color: #FFF; }
+        body.dark-mode .post-modal { background: #1A1A1A; color: #FFF; }
+        body.dark-mode #new-friend-name, body.dark-mode #new-friend-note, body.dark-mode #new-friend-prompt, body.dark-mode #new-post-text { background: #333; border-color: #444; color: #FFF; }
+        body.dark-mode #mock-photo-text, body.dark-mode #voice-text, body.dark-mode #edit-msg-text, body.dark-mode #transfer-amount, body.dark-mode #transfer-note { background: #333; border-color: #444; color: #FFF; }
+        body.dark-mode .action-menu { background: #1A1A1A; border-color: #333; }
+        body.dark-mode .menu-item { color: #FFF; border-color: #333; }
+        body.dark-mode .scheme-item { border-color: #333; color: #FFF; }
+        body.dark-mode .scheme-item:active { background: #2A2A2A; }
+        body.dark-mode #rename-scheme-input, body.dark-mode #rename-font-input, body.dark-mode #font-url-input { background: #333; border-color: #444; color: #FFF; }
+        body.dark-mode .dock-label { color: #FFF; }
+
+        /* Bubble Dark Mode */
+        body.dark-mode .bubble-header, body.dark-mode .bubble-chat-header { background: var(--bg-color); border-color: #333; }
+        body.dark-mode #bubble-chat-view { background: #121212; }
+        body.dark-mode .bubble-header h1, body.dark-mode #bubble-chat-header-name { color: #FFF; }
+        body.dark-mode .bubble-header-icons svg { stroke: #FFF; }
+        body.dark-mode .bubble-header-icons svg[fill="#000"] { fill: #FFF; stroke: none; }
+        body.dark-mode .bubble-sec-title { color: #AAA; }
+        body.dark-mode .bubble-name { color: #FFF; }
+        body.dark-mode .bubble-status { color: #AAA; }
+        body.dark-mode .bubble-divider { background: #333; }
+        body.dark-mode .bubble-nav { background: #1A1A1A; border-color: #333; }
+        body.dark-mode .bubble-nav-item svg[fill="#000"] { fill: #FFF; }
+        body.dark-mode .bubble-nav-item svg[stroke="#CCC"] { stroke: #777; }
+        body.dark-mode .bubble-nav-item svg[fill="#CCC"] { fill: #777; }
+        body.dark-mode .bubble-msg-plain { color: #EEE; }
+        body.dark-mode .bubble-quote-block { background: rgba(255,255,255,0.08); color: #CCC; }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="file-input" onchange="handleFile(event)">
+    <input type="file" id="chat-img-input" accept="image/*" onchange="handleChatImageUpload(event)" style="display:none;">
+    
+    <!-- 仿 iOS 状态栏 -->
+    <div id="ios-status-bar">
+        <div id="status-time">00:00</div>
+        <div class="status-right">
+            <svg viewBox="0 0 18 12" style="width: 17px; margin-right: 2px;">
+                <rect x="0" y="8" width="3" height="4" rx="1.5"/>
+                <rect x="5" y="5.5" width="3" height="6.5" rx="1.5"/>
+                <rect x="10" y="3" width="3" height="9" rx="1.5"/>
+                <rect x="15" y="0" width="3" height="12" rx="1.5"/>
+            </svg>
+            <span id="status-network">5G</span>
+            <div class="battery-icon" id="battery-icon">
+                <div class="battery-level" id="battery-level"></div>
+                <svg class="battery-charging" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主页 -->
+    <div id="home" class="page active">
+        <div class="profile-card">
+            <div class="header-banner" id="banner-img" onclick="triggerPhoto('banner-img')"></div>
+            <div class="avatar-container"><div class="avatar" id="avatar-img" onclick="triggerPhoto('avatar-img')"></div></div>
+            <div class="profile-info">
+                <span class="nickname editable" contenteditable="true" id="txt-nickname" onblur="saveHomeName()" oninput="syncHomeNameToKakao()">Eun</span>
+                <span class="user-id editable" contenteditable="true">@X1hoonyuneun</span>
+                <span class="bio editable" contenteditable="true">♪ ⁺˳매일매일 조금이라도 행복하자 🤍꙳✧˖°</span>
+                <div class="location-container">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+                    <span class="location editable" contenteditable="true">首尔</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="home-main-layout">
+            <div class="chat-widget">
+                <div class="bubble bubble-gray" contenteditable="true">린 서로가 있어</div>
+                <div class="bubble bubble-white" contenteditable="true">ㅇㅋ♡</div>
+            </div>
+            <div class="icon-grid">
+                <div class="app-item" onclick="showPage('settings')"><div class="icon-box" id="icon-settings"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></div><span class="app-name">设置</span></div>
+                <div class="app-item" onclick="showPage('theme')"><div class="icon-box" id="icon-theme"><svg viewBox="0 0 24 24"><path d="m12 3 1.912 5.886h6.19l-5.007 3.638L17.007 18.41 12 14.772l-5.007 3.638 1.912-5.886-5.007-3.638h6.19z"/></svg></div><span class="app-name">美化</span></div>
+                <div class="app-item" onclick="showPage('kakao')">
+                    <div class="icon-box" style="background-color:#FEE500; border:none;" id="icon-kakao">
+                        <svg viewBox="0 0 24 24" style="stroke:none; fill:#3C1E1E;">
+                            <path d="M12 4c-5.52 0-10 3.58-10 8 0 2.86 1.85 5.35 4.65 6.75-.24 1.15-.84 3.03-.92 3.34-.1.35.25.35.45.2.22-.16 2.65-1.74 3.73-2.52.66.15 1.36.23 2.09.23 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+                            <text x="12" y="14.5" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="6.5" fill="#FEE500" text-anchor="middle" letter-spacing="-0.2">TALK</text>
+                        </svg>
+                    </div>
+                    <span class="app-name">KakaoTalk</span>
+                </div>
+                <div class="app-item"><div class="icon-box" id="icon-ins"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></div><span class="app-name">Instagram</span></div>
+            </div>
+        </div>
+
+        <div class="home-footer-widget">
+            <div class="widget-left"><div class="widget-text" contenteditable="true">여전히 꿈속에서는 네가 살아 숨 쉬고 있어</div><div class="widget-subtext" contenteditable="true">2 minutes ago</div></div>
+            <div class="widget-actions">
+                <div class="widget-action-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path></svg></div>
+                <div class="widget-action-item"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div>
+                <div class="widget-action-item"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>
+            </div>
+        </div>
+
+        <!-- ================= 完善的主页底部 Dock (带有明确的 App 名称) ================= -->
+        <div class="dock-container"><div class="dock">
+            <div class="dock-item-wrap" onclick="showPage('bubble')">
+                <div class="dock-item" id="icon-bubble"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10a3 3 0 0 1 6 0"/></svg></div>
+                <span class="dock-label">bubble</span>
+            </div>
+            <div class="dock-item-wrap">
+                <div class="dock-item" id="icon-weibo"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
+                <span class="dock-label">微博</span>
+            </div>
+            <div class="dock-item-wrap">
+                <div class="dock-item" id="icon-x"><svg viewBox="0 0 24 24"><path d="M4 4l11.733 16h4.267l-11.733-16zM4 20l6.768-6.768"/></svg></div>
+                <span class="dock-label">X</span>
+            </div>
+            <div class="dock-item-wrap">
+                <div class="dock-item" id="icon-weverse"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+                <span class="dock-label">Weverse</span>
+            </div>
+        </div></div>
+    </div>
+
+    <!-- ================= 全新：Bubble 主界面 ================= -->
+    <div id="bubble" class="page" style="background: #FFFFFF;">
+        <div class="bubble-header">
+            <div style="display:flex; align-items:center; gap: 10px;">
+                <svg viewBox="0 0 24 24" onclick="showPage('home')" style="width:22px; height:22px; stroke:#000; fill:none; stroke-width:2.5; cursor:pointer;"><path d="m15 18-6-6 6-6"/></svg>
+                <h1>FRIENDS</h1>
+            </div>
+            <div class="bubble-header-icons">
+                <svg viewBox="0 0 24 24" stroke="#000" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg viewBox="0 0 24 24" fill="#000"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 12h10m-5-5v10" stroke="#FFF" stroke-width="2.5" stroke-linecap="round"/></svg>
+            </div>
+        </div>
+        
+        <div class="bubble-sec-title">我的资料</div>
+        <div class="bubble-item" style="cursor: default;">
+            <div class="bubble-item-left">
+                <!-- 点击修改 Bubble 头像 -->
+                <div class="bubble-ava" id="bubble-my-ava" onclick="triggerPhoto('bubble-my-ava')" style="cursor: pointer;"></div>
+                <div class="bubble-name editable" contenteditable="true" id="bubble-my-name" onblur="saveBubbleProfile()"></div>
+            </div>
+            <div class="bubble-status editable" contenteditable="true" id="bubble-my-status" onblur="saveBubbleProfile()">love u 🫶🏻</div>
+        </div>
+
+        <div class="bubble-divider"></div>
+
+        <!-- 不含推荐好友，直接显示 KKT AI 好友 -->
+        <div class="bubble-sec-title">bubble 好友 <span id="bubble-friend-count" style="font-weight:400;">0</span></div>
+        <div id="bubble-friend-list">
+            <!-- JS 动态生成与 KKT 一致的好友 -->
+        </div>
+
+        <!-- Bubble 底栏，一模一样的三个图标 -->
+        <div class="bubble-nav">
+            <div class="bubble-nav-item">
+                <svg viewBox="0 0 24 24" fill="#000"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            </div>
+            <div class="bubble-nav-item dimmed">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#CCC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="bubble-nav-item dimmed">
+                <svg viewBox="0 0 24 24" fill="#CCC"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 全新：Bubble 专属聊天室 ================= -->
+    <div id="bubble-chat-view" class="page" style="padding-bottom: 0;">
+        <div class="bubble-chat-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; position: relative;">
+                <svg viewBox="0 0 24 24" onclick="showPage('bubble')" style="width:24px; height:24px; stroke:#000; fill:none; stroke-width:2.5; cursor:pointer;"><path d="m15 18-6-6 6-6"/></svg>
+                <div id="bubble-chat-header-name" style="position: absolute; left: 50%; transform: translateX(-50%); font-size: 16px; font-weight: 800; color: #000; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">Name</div>
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <svg viewBox="0 0 24 24" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px; cursor:pointer;"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="14" x2="21" y2="3"></line><polyline points="8 21 3 21 3 16"></polyline><line x1="20" y1="10" x2="3" y2="21"></line></svg>
+                    <svg viewBox="0 0 24 24" fill="#000" style="width:20px;height:20px; cursor:pointer;" onclick="openBubbleChatSettings()"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                </div>
+            </div>
+            <!-- 天数统计：实时更新，字体与颜色对标截图 -->
+            <div style="text-align: center; padding-bottom: 10px; font-size: 12px; font-weight: 800; color: #000; border-bottom: 1px solid rgba(0,0,0,0.05);">
+                <span style="font-style: italic; font-family: 'Georgia', serif;">bubble</span> <span style="color:#A020F0; font-size:10px;">💜</span> + <span id="bubble-chat-days">1</span>
+            </div>
+        </div>
+        
+        <div id="bubble-chat-content" style="flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding: 15px; display: flex; flex-direction: column; gap: 15px; background-color: #FFFFFF;">
+            <!-- 气泡由 JS 动态生成 -->
+        </div>
+        
+        <div class="chat-bottom-wrapper" style="border-top: 1px solid #EEE;">
+            <div class="chat-input-bar">
+                <div class="chat-input-wrapper" style="background: transparent; border: 1px solid #E5E5EA;">
+                    <input type="text" id="bubble-chat-input" class="chat-input" placeholder="输入消息..." onkeypress="handleBubbleEnter(event)">
+                    <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #888; fill: none; margin-left: 8px; flex-shrink: 0;"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                </div>
+                <div class="chat-action-icon" onclick="sendBubbleMessage()" style="margin-left: 5px;">
+                    <svg viewBox="0 0 24 24" stroke="#888" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- KakaoTalk 好友列表页面 -->
+    <div id="kakao" class="page">
+        <div class="kakao-header-v2">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg viewBox="0 0 24 24" onclick="showPage('home')" style="width: 24px; height: 24px; stroke: #000; fill: none; stroke-width: 2.5; cursor: pointer; stroke-linecap: round; stroke-linejoin: round;"><path d="m15 18-6-6 6-6"/></svg>
+                <div class="title">好友</div>
+            </div>
+            <div class="icons">
+                <svg viewBox="0 0 24 24" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <svg viewBox="0 0 24 24" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" onclick="toggleKakaoAddMenu()"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="17" y1="11" x2="23" y2="11"></line></svg>
+                <svg viewBox="0 0 24 24" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"></path></svg>
+                <div id="kakao-add-menu" class="action-menu" style="top: 35px; right: 0;">
+                    <div class="menu-item" onclick="showAddFriendModal()">添加好友</div>
+                    <div class="menu-item">发起群聊</div>
+                </div>
+            </div>
+        </div>
+        <div class="kakao-profile-section">
+            <div class="user-info">
+                <div class="ava" id="k-my-ava" onclick="triggerPhoto('avatar-img')"></div>
+                <div class="name editable" contenteditable="true" id="k-my-name" onblur="saveKakaoName()" oninput="syncKakaoNameToHome()">Eun</div>
+            </div>
+            <div class="profile-plus">Profile +</div>
+        </div>
+        <div class="kakao-divider"></div>
+        <div class="kakao-list-group"><span>Channel</span><svg viewBox="0 0 24 24" style="transform: rotate(180deg);"><path d="m18 15-6-6-6 6"/></svg></div>
+        <div class="kakao-item" style="gap: 15px;">
+            <div class="icon-box-k icon-yellow" style="border-radius: 50%; flex-shrink: 0; width: 44px; height: 44px;">
+                <svg viewBox="0 0 24 24" style="stroke:none; fill:#3C1E1E; width: 22px; height: 22px;">
+                    <path d="M12 4c-5.52 0-10 3.58-10 8 0 2.86 1.85 5.35 4.65 6.75-.24 1.15-.84 3.03-.92 3.34-.1.35.25.35.45.2.22-.16 2.65-1.74 3.73-2.52.66.15 1.36.23 2.09.23 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/>
+                    <text x="12" y="14.5" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="6.5" fill="#FEE500" text-anchor="middle" letter-spacing="-0.2">ch</text>
+                </svg>
+            </div>
+            <div class="content-k" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <div class="name-k" style="font-size: calc(16px * var(--font-scale)); font-weight: 600; color: #111; margin: 0;">Channel</div>
+            </div>
+            <svg class="chevron-k" viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke: #C7C7CC; fill: none;"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+        <div class="kakao-divider" style="margin-top: 5px;"></div>
+        <div class="kakao-list-group"><span>好友 <span id="friend-count-display">0</span></span><svg viewBox="0 0 24 24" style="transform: rotate(180deg);"><path d="m18 15-6-6-6 6"/></svg></div>
+        <div id="kakao-friend-list"></div>
+        <!-- 底部导航 -->
+        <div class="kakao-nav-v2">
+            <div class="nav-tab-v2" onclick="showPage('kakao')">
+                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            </div>
+            <div class="nav-tab-v2 dimmed">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+            </div>
+            <div class="nav-tab-v2 dimmed">
+                <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.15 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+            </div>
+            <div class="nav-tab-v2 dimmed" onclick="showPage('kakao-profile-detail')">
+                <svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kakao 个人主页/动态页 (第四个Tab) -->
+    <div id="kakao-profile-detail" class="page" style="background: #FFFFFF;">
+        <div class="k-detail-header-wrap" style="position: relative; height: 60vh; width: 100%; min-height: 400px;">
+            <div id="k-detail-bg" style="position: absolute; top:0; left:0; width:100%; height:100%; background-size: cover; background-position: center; cursor: pointer;" onclick="triggerPhoto('k-detail-bg')"></div>
+            <div class="k-detail-gradient" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 180px; background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%); pointer-events: none;"></div>
+            
+            <div style="position: absolute; top: calc(20px + var(--status-bar-height)); left: 20px; width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 10;" onclick="showPage('kakao')">
+                <svg viewBox="0 0 24 24" style="width: 20px; stroke: #FFF; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+            </div>
+            <div style="position: absolute; top: calc(20px + var(--status-bar-height)); right: 65px; padding: 6px 14px; border-radius: 20px; background: rgba(0,0,0,0.3); color: #FFF; font-size: calc(13px * var(--font-scale)); font-weight: 500; cursor: pointer; z-index: 10;">
+                编辑
+            </div>
+            <div style="position: absolute; top: calc(20px + var(--status-bar-height)); right: 20px; width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 10;" onclick="openMyProfileSettings()">
+                <svg viewBox="0 0 24 24" style="width: 20px; fill: #FFF;"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </div>
+
+            <div style="position: absolute; bottom: 15px; left: 20px; z-index: 10;">
+                <div id="k-detail-ava" style="width: 75px; height: 75px; border-radius: 28px; background-image: var(--default-avatar); background-size: cover; background-position: center; border: 2.5px solid #FFF; cursor: pointer;" onclick="triggerPhoto('k-detail-ava')"></div>
+                <div id="k-detail-name" style="font-size: calc(22px * var(--font-scale)); font-weight: 800; color: #000; margin-top: 10px;">Eun</div>
+                <div id="k-detail-status" style="font-size: calc(14px * var(--font-scale)); color: #333; margin-top: 5px; font-weight: 500;">ʚ행복 확산ɞ</div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; padding: 15px 20px 25px; background: transparent;">
+            <div class="action-btn" style="flex: 1; border: 1px solid #E5E5EA; border-radius: 12px; padding: 12px; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; background: #FFF;">
+                <svg viewBox="0 0 24 24" style="width: 18px; stroke: #000; fill: none; stroke-width: 1.8;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span style="font-size: calc(14px * var(--font-scale)); font-weight: 600; color: #000;" class="action-btn-text">我的聊天室</span>
+            </div>
+            <div class="action-btn" onclick="showNewPostModal()" style="flex: 1; border: 1px solid #E5E5EA; border-radius: 12px; padding: 12px; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; background: #FFF;">
+                <svg viewBox="0 0 24 24" style="width: 18px; stroke: #000; fill: none; stroke-width: 1.8;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                <span style="font-size: calc(14px * var(--font-scale)); font-weight: 600; color: #000;" class="action-btn-text">New Post</span>
+            </div>
+        </div>
+
+        <div id="k-detail-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 0 2px;"></div>
+        
+        <div class="kakao-nav-v2">
+            <div class="nav-tab-v2 dimmed" onclick="showPage('kakao')">
+                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            </div>
+            <div class="nav-tab-v2 dimmed">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+            </div>
+            <div class="nav-tab-v2 dimmed">
+                <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.15 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+            </div>
+            <div class="nav-tab-v2" onclick="showPage('kakao-profile-detail')">
+                <svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- 聊天页面 -->
+    <div id="chat-view" class="page" style="padding-bottom: 0;">
+        <div class="chat-view-header">
+            <div onclick="showPage('kakao')" style="cursor:pointer; width: 24px; display:flex; align-items:center;">
+                <svg viewBox="0 0 24 24" stroke="#000" stroke-width="1.8" fill="none" style="width:24px; height:24px;"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="chat-header-title-container" id="chat-header-name"></div>
+            <div class="chat-view-header-icons">
+                <svg viewBox="0 0 24 24" stroke="#000" stroke-width="1.8" fill="none" style="width:20px; height:20px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg viewBox="0 0 24 24" stroke="#000" stroke-width="1.8" fill="none" style="width:22px; height:22px; cursor:pointer;" onclick="openChatSettings()"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </div>
+        </div>
+
+        <div id="blocked-top-banner-container" style="display:none; padding: 12px 15px 0; z-index: 10;">
+            <div id="blocked-top-banner" style="background: white; padding: 12px 0; border-radius:12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-around;">
+                <div style="display: flex; align-items: center; gap: 5px; color: #000; font-size: 13px; font-weight: 500; cursor: pointer;">
+                    <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:#000;"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>添加
+                </div>
+                <div style="width: 1px; height: 15px; background: #E0E0E0;"></div>
+                <div style="display: flex; align-items: center; gap: 5px; color: #000; font-size: 13px; font-weight: 500; cursor: pointer;" onclick="unblockFriend()">
+                    <svg viewBox="0 0 24 24" style="width:16px; height:16px; stroke:#000; fill:none; stroke-width:2;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>取消屏蔽
+                </div>
+                <div style="width: 1px; height: 15px; background: #E0E0E0;"></div>
+                <div style="display: flex; align-items: center; gap: 5px; color: #FF3B30; font-size: 13px; font-weight: 500; cursor: pointer;">
+                    <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:#FF3B30;"><path d="M15.73 3H8.27L3 8.27v7.46L8.27 21h7.46L21 15.73V8.27L15.73 3zM12 17.3c-.72 0-1.3-.58-1.3-1.3 0-.72.58-1.3 1.3-1.3.72 0 1.3.58 1.3 1.3 0 .72-.58 1.3-1.3 1.3zm1-4.3h-2V7h2v6z"/></svg>举报
+                </div>
+            </div>
+        </div>
+
+        <div id="chat-content" class="chat-view-content"></div>
+        
+        <div class="chat-bottom-wrapper">
+            <div class="chat-input-bar">
+                <div class="chat-action-icon" onclick="toggleAttachMenu()">
+                    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <div class="chat-input-wrapper">
+                    <input type="text" id="chat-input" class="chat-input" oninput="toggleSendIcon()" onkeypress="handleEnter(event)">
+                    <svg class="chat-input-icon" viewBox="0 0 24 24" stroke="#888" stroke-width="1.8" fill="none"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                </div>
+                <div class="chat-action-icon" id="btn-mic-send" onclick="sendMessage()">
+                    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </div>
+            </div>
+            
+            <div id="multi-select-bar" style="display:none; align-items:center; justify-content:space-between; padding: 15px 20px; padding-bottom: calc(15px + var(--safe-bottom)); background:white; border-top:1px solid #EEE;">
+                <div onclick="exitMultiSelectMode()" style="color:#666; cursor:pointer; font-weight:500;">取消</div>
+                <div style="font-weight:600; font-size:14px;">已选 <span id="sel-count">0</span> 条</div>
+                <div onclick="promptDeleteSelected()" style="color:#FF3B30; cursor:pointer; font-weight:600;">删除</div>
+            </div>
+
+            <div id="chat-attach-menu" class="attach-menu">
+                <div class="attach-item" onclick="openMockPhotoModal()"><div class="attach-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div><span>拍照</span></div>
+                <div class="attach-item" onclick="document.getElementById('chat-img-input').click()"><div class="attach-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></div><span>照片</span></div>
+                <div class="attach-item" onclick="openVoiceModal()"><div class="attach-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg></div><span>语音</span></div>
+                <div class="attach-item" onclick="alert('正在呼叫...')"><div class="attach-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></div><span>语音通话</span></div>
+                <div class="attach-item" onclick="alert('正在发起视频通话...')"><div class="attach-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg></div><span>视频通话</span></div>
+                <div class="attach-item" onclick="openTransferModal()"><div class="attach-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01M18 12h.01"></path></svg></div><span>转账</span></div>
+                <div class="attach-item" onclick="regenerateLastAI()"><div class="attach-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg></div><span>重回</span></div>
+            </div>
+        </div>
+
+        <div id="blocked-bottom-banner" style="display:none; background: #F5F5F5; padding: 15px; padding-bottom: max(env(safe-area-inset-bottom), 15px); text-align: center; color: #666; font-size: 13px; border-top: 1px solid #E5E5EA; flex-shrink: 0; width: 100%;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill:#555;"><circle cx="12" cy="12" r="10"/><path d="M12 7v5" stroke="#FFF" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="#FFF"/></svg>
+                无法与被屏蔽的用户聊天。
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗结构 -->
+    <div id="msg-action-menu" class="modal-overlay" onclick="closeMsgActionMenu()" style="background: rgba(0,0,0,0.15);">
+        <div id="action-popup-box" class="action-popup" onclick="event.stopPropagation()">
+            <div class="action-popup-grid">
+                <div class="action-popup-btn" onclick="actionCopy()">复制</div>
+                <div class="action-popup-btn" onclick="actionEdit()">编辑</div>
+                <div class="action-popup-btn" onclick="actionQuote()">引用</div>
+                <div class="action-popup-btn" onclick="alert('收藏功能暂未开放'); closeMsgActionMenu()">收藏</div>
+                <div class="action-popup-btn" onclick="actionMultiSelect()">多选</div>
+                <div class="action-popup-btn delete-btn" onclick="actionDelete()">删除</div>
+            </div>
+        </div>
+    </div>
+    <div id="edit-msg-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin-bottom: 15px;">编辑消息</h4><textarea id="edit-msg-text" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; outline: none; box-sizing: border-box; resize: none; min-height: 80px;"></textarea><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 15px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeEditMsgModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: var(--accent-blue); font-weight: 600;" onclick="confirmEditMsg()">确认</div></div></div></div>
+    <div id="delete-confirm-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin: 10px;">确认删除</h4><div id="delete-confirm-text" style="text-align: center; font-size:14px; color:#666; margin-bottom:20px;">确认要删除这条消息吗？</div><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeDeleteConfirmModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #FF3B30; font-weight: 600;" onclick="confirmDeleteMsg()">确认</div></div></div></div>
+    <div id="delete-friend-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin-bottom: 10px;">确认删除好友？</h4><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 20px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeDeleteFriendModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #FF3B30; font-weight: 600;" onclick="confirmDeleteFriend()">确认</div></div></div></div>
+    <div id="block-friend-overlay" class="modal-overlay"><div class="post-modal"><h4 id="block-friend-modal-title" style="text-align: center; margin-bottom: 10px;">确认拉黑好友？</h4><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 20px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeBlockFriendModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #FF3B30; font-weight: 600;" onclick="confirmBlockFriend()">确认</div></div></div></div>
+    <div id="transfer-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin-bottom: 15px;">转账</h4><input type="number" id="transfer-amount" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; margin-bottom: 10px; outline: none; box-sizing: border-box;" placeholder="输入金额 (₩)"><input type="text" id="transfer-note" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; margin-bottom: 10px; outline: none; box-sizing: border-box;" placeholder="添加备注 (可选)"><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 5px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeTransferModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: var(--accent-blue); font-weight: 600;" onclick="submitTransfer()">转账</div></div></div></div>
+    <div id="transfer-detail-overlay" class="modal-overlay"><div class="post-modal" style="text-align: center; padding: 40px 20px 20px; border-radius: 20px;"><div id="transfer-detail-amount" style="font-size: 26px; font-weight: 800; color: #000; margin-bottom: 8px;">500,000원</div><div id="transfer-detail-text" style="font-size: 15px; color: #666; margin-bottom: 30px;">받았어요.</div><div style="background: var(--kakao-yellow); padding: 14px; border-radius: 12px; font-weight: 700; color: #000; cursor: pointer; font-size: 16px;" onclick="closeTransferDetailModal()">확인</div></div></div>
+
+    <!-- Bubble 聊天设置页 -->
+    <div id="bubble-chat-settings" class="page settings-page">
+        <div class="settings-header">
+            <div onclick="closeBubbleChatSettings()" style="cursor:pointer;"><svg viewBox="0 0 24 24" style="width:24px; stroke:#000; fill:none; stroke-width:2;"><path d="m15 18-6-6 6-6"/></svg></div>
+            <div>Bubble 设置</div>
+            <div style="width:24px;"></div>
+        </div>
+        <div class="settings-group">
+            <div class="settings-label">资料与人设 (系统自动读取互通)</div>
+            <div class="settings-card">
+                <div class="settings-item">
+                    <label>对方 Bubble ID</label>
+                    <input type="text" id="bubble-set-name" placeholder="设置Bubble专用昵称" oninput="updateBubbleActiveFriend('bubbleName', this.value)">
+                </div>
+                <div class="settings-item column" style="border-bottom: none;">
+                    <label>对待粉丝的人设态度</label>
+                    <textarea id="bubble-set-prompt" class="large-box" placeholder="写下爱豆对待粉丝的态度和设定..." oninput="updateBubbleActiveFriend('prompt', this.value)"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 独立聊天设置页 -->
+    <div id="chat-settings" class="page">
+        <div class="settings-header"><div onclick="closeChatSettings()" style="cursor:pointer;"><svg viewBox="0 0 24 24" style="width:24px; stroke:#000; fill:none; stroke-width:2;"><path d="m15 18-6-6 6-6"/></svg></div><div>聊天设置</div><div style="width:24px;"></div></div>
+        <div class="settings-group">
+            <div class="settings-label">资料修改</div>
+            <div class="settings-card">
+                <div class="settings-item" onclick="triggerPhoto('set-friend-ava')" style="cursor:pointer;"><label>修改对方头像</label><div id="set-friend-ava" style="width:40px; height:40px; border-radius:12px; background-size:cover;"></div></div>
+                <div class="settings-item" onclick="triggerPhoto('avatar-img')" style="cursor:pointer;"><label>我的头像</label><div id="set-my-ava" style="width:40px; height:40px; border-radius:12px; background-size:cover;"></div></div>
+                <div class="settings-item"><label>好友昵称</label><input type="text" id="set-name" oninput="updateActiveFriend('name', this.value)"></div>
+                <div class="settings-item"><label>备注</label><input type="text" id="set-note" oninput="updateActiveFriend('note', this.value)"></div>
+            </div>
+        </div>
+        <div class="settings-group">
+            <div class="settings-label">性格与设定</div>
+            <div class="settings-card">
+                <div class="settings-item column"><label>角色设定</label><textarea id="set-prompt" class="large-box" placeholder="写下对角色的性格设定..." oninput="updateActiveFriend('prompt', this.value)"></textarea></div>
+                <div class="settings-item column"><label>世界书</label><div id="wb-toggle-btn" class="wb-toggle-box" onclick="toggleWorldbook()"><span id="wb-toggle-text">▶ 点击展开世界书设定...</span></div><textarea id="set-worldbook" class="worldbook-box" oninput="updateActiveFriend('worldbook', this.value)"></textarea></div>
+                <div class="settings-item column"><label>我的人设</label><textarea id="set-persona" class="large-box" placeholder="写下你在对话中的人设..." oninput="updateActiveFriend('persona', this.value)"></textarea></div>
+            </div>
+        </div>
+        <div class="settings-group">
+            <div class="settings-label">聊天显示</div>
+            <div class="settings-card">
+                <div class="settings-item"><label>自动翻译</label><label class="switch"><input type="checkbox" id="set-auto-translate" onchange="updateActiveFriend('autoTranslate', this.checked)"><span class="slider"></span></label></div>
+                <div class="settings-item"><label>主动发消息</label><label class="switch"><input type="checkbox" id="set-auto-message" onchange="updateActiveFriend('autoMessage', this.checked)"><span class="slider"></span></label></div>
+                <div class="settings-item"><label>显示时间戳</label><label class="switch"><input type="checkbox" id="set-show-time" onchange="updateActiveFriend('showTime', this.checked)"><span class="slider"></span></label></div>
+                <div class="settings-item"><label>显示已读 (数字1)</label><label class="switch"><input type="checkbox" id="set-show-read" onchange="updateActiveFriend('showRead', this.checked)"><span class="slider"></span></label></div>
+                <div class="settings-item"><label>隐藏头像</label><label class="switch"><input type="checkbox" id="set-hide-ava" onchange="updateActiveFriend('hideAva', this.checked)"><span class="slider"></span></label></div>
+                <div class="settings-item" style="flex-direction: column; align-items: flex-start; border-bottom: none;"><label style="margin-bottom: 10px;">隐藏模式</label><select id="set-hide-mode" onchange="updateActiveFriend('hideMode', this.value)" style="width: 100%; border: 1px solid #E5E5EA; padding: 10px; border-radius: 8px; outline: none; background: #F9F9F9; font-size: calc(14px * var(--font-scale)); color: #333;"><option value="mine">隐藏我的</option><option value="friend">隐藏对方</option><option value="both">隐藏双方</option></select></div>
+            </div>
+        </div>
+        <div class="settings-group"><div class="settings-card"><div class="settings-item" style="justify-content: center; cursor:pointer;" onclick="promptBlockFriend()"><label id="block-friend-label" style="color: #FF3B30; cursor:pointer; width:100%; text-align:center;">拉黑好友</label></div><div class="settings-item" style="justify-content: center; cursor:pointer; border-top: 1px solid #F5F5F5; border-bottom: none;" onclick="promptDeleteFriend()"><label style="color: #FF3B30; cursor:pointer; width:100%; text-align:center;">删除好友</label></div></div></div>
+        <div style="height: 30px;"></div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div id="add-friend-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin-bottom: 15px;">添加好友</h4><div style="display:flex; justify-content:center; margin-bottom: 15px;"><div id="new-friend-ava" style="width: 70px; height: 70px; border-radius: 25px; background-size: cover; background-image: var(--default-avatar); cursor: pointer;" onclick="triggerPhoto('new-friend-ava')"></div></div><input type="text" id="new-friend-name" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; margin-bottom: 10px; outline: none; box-sizing: border-box;" placeholder="好友姓名"><input type="text" id="new-friend-note" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; margin-bottom: 10px; outline: none; box-sizing: border-box;" placeholder="备注"><textarea id="new-friend-prompt" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; outline: none; box-sizing: border-box; resize: none; min-height: 80px;" placeholder="角色设定"></textarea><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 5px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeAddFriendModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: var(--accent-blue); font-weight: 600;" onclick="submitNewFriend()">添加</div></div></div></div>
+
+    <!-- 系统设置页面 -->
+    <div id="settings" class="page settings-page">
+        <div class="settings-header"><div onclick="showPage('home')" style="cursor:pointer;"><svg viewBox="0 0 24 24" style="width:24px; stroke:#000; fill:none; stroke-width:2;"><path d="m15 18-6-6 6-6"/></svg></div><div>系统设置</div><div style="width:24px;"></div></div>
+        <div class="settings-group">
+            <div class="settings-label">API 配置 (真实连接)</div>
+            <div class="settings-card">
+                <div class="settings-item"><label>API 地址</label><input type="text" id="api-base" placeholder="https://api.openai.com/v1" onblur="saveSysSettings()"></div>
+                <div class="settings-item"><label>API Key</label><input type="password" id="api-key" placeholder="sk-..." onblur="saveSysSettings()"></div>
+                <div class="settings-item"><label>选择模型</label><select id="api-model" onchange="saveSysSettings()" style="width: 50%; border: none; outline: none; background: transparent; text-align: right; color: inherit; direction: rtl;"><option value="">输入或拉取</option></select></div>
+                <div class="settings-item" style="justify-content: center; color: #000; font-weight: 600; cursor: pointer;" onclick="pullModels()" id="btn-pull-models">拉取模型</div>
+                <div class="settings-item" style="justify-content: space-between; color: #000; font-weight: 600; cursor: pointer; padding: 0;"><div style="flex:1; text-align:center; padding:12px 15px; border-right:1px solid #EEE;" onclick="saveCurrentScheme()">保存当前方案</div><div style="flex:1; text-align:center; padding:12px 15px;" onclick="openSelectSchemeModal()">选择方案</div></div>
+            </div>
+        </div>
+        <div class="settings-group">
+            <div class="settings-label">对话参数</div>
+            <div class="settings-card">
+                <div class="settings-item column"><div style="display: flex; justify-content: space-between; width: 100%;"><label>Temperature (温度)</label><span id="temp-val" style="color: #888; font-size: calc(14px * var(--font-scale));">1.0</span></div><input type="range" id="api-temp" min="0" max="2" step="0.1" value="1" oninput="document.getElementById('temp-val').innerText = this.value; saveSysSettings()" style="width: 100%; margin-top: 10px;"></div>
+                <div class="settings-item"><label>记忆条数</label><input type="number" id="api-memory" value="50" onblur="saveSysSettings()" style="width: 60px; text-align: right; border: none; outline: none; background: transparent; font-size: calc(14px * var(--font-scale)); color: inherit;"></div>
+            </div>
+        </div>
+        <div class="settings-group"><div class="settings-label">外观设置</div><div class="settings-card"><div class="settings-item"><label>夜间模式</label><label class="switch"><input type="checkbox" id="sys-dark-mode" onchange="toggleDarkMode(this.checked); saveSysSettings()"><span class="slider"></span></label></div></div></div>
+        <div style="height: 40px;"></div>
+    </div>
+
+    <!-- 全新美化中心页面 -->
+    <div id="theme" class="page settings-page">
+        <div class="settings-header"><div onclick="showPage('home')" style="cursor:pointer;"><svg viewBox="0 0 24 24" style="width:24px; stroke:#000; fill:none; stroke-width:2;"><path d="m15 18-6-6 6-6"/></svg></div><div>美化中心</div><div style="width:24px;"></div></div>
+        <div class="settings-group"><div class="settings-card"><div class="settings-item" onclick="showPage('theme-icons')" style="cursor: pointer;"><label>更改图标</label><span>＞</span></div><div class="settings-item" onclick="showPage('theme-walls')" style="cursor: pointer;"><label>修改壁纸</label><span>＞</span></div><div class="settings-item" onclick="showPage('theme-fonts')" style="cursor: pointer;"><label>字体设置</label><span>＞</span></div></div></div>
+    </div>
+
+    <div id="theme-icons" class="page settings-page">
+        <div class="settings-header"><div onclick="showPage('theme')" style="cursor:pointer;"><svg viewBox="0 0 24 24" style="width:24px; stroke:#000; fill:none; stroke-width:2;"><path d="m15 18-6-6 6-6"/></svg></div><div>更改图标</div><div style="width:24px;"></div></div>
+        <div class="settings-label" style="margin-top: 15px;">点击下方图标即可修改 (自动同步至桌面)</div>
+        <div class="icon-grid" style="padding: 0 20px 20px 20px;">
+            <div class="app-item" onclick="triggerPhoto('icon-settings')"><div class="icon-box" id="prev-icon-settings"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></div><span class="app-name">设置</span></div>
+            <div class="app-item" onclick="triggerPhoto('icon-theme')"><div class="icon-box" id="prev-icon-theme"><svg viewBox="0 0 24 24"><path d="m12 3 1.912 5.886h6.19l-5.007 3.638L17.007 18.41 12 14.772l-5.007 3.638 1.912-5.886-5.007-3.638h6.19z"/></svg></div><span class="app-name">美化</span></div>
+            <div class="app-item" onclick="triggerPhoto('icon-kakao')"><div class="icon-box" style="background-color:#FEE500; border:none;" id="prev-icon-kakao"><svg viewBox="0 0 24 24" style="stroke:none; fill:#3C1E1E;"><path d="M12 4c-5.52 0-10 3.58-10 8 0 2.86 1.85 5.35 4.65 6.75-.24 1.15-.84 3.03-.92 3.34-.1.35.25.35.45.2.22-.16 2.65-1.74 3.73-2.52.66.15 1.36.23 2.09.23 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/><text x="12" y="14.5" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="6.5" fill="#FEE500" text-anchor="middle" letter-spacing="-0.2">TALK</text></svg></div><span class="app-name">KakaoTalk</span></div>
+            <div class="app-item" onclick="triggerPhoto('icon-ins')"><div class="icon-box" id="prev-icon-ins"><svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></div><span class="app-name">Instagram</span></div>
+            <div class="app-item" onclick="triggerPhoto('icon-bubble')"><div class="icon-box" id="prev-icon-bubble"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10a3 3 0 0 1 6 0"/></svg></div><span class="app-name">bubble</span></div>
+            <div class="app-item" onclick="triggerPhoto('icon-weibo')"><div class="icon-box" id="prev-icon-weibo"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><span class="app-name">微博</span></div>
+            <div class="app-item" onclick="triggerPhoto('icon-x')"><div class="icon-box" id="prev-icon-x"><svg viewBox="0 0 24 24"><path d="M4 4l11.733 16h4.267l-11.733-16zM4 20l6.768-6.768"/></svg></div><span class="app-name">X</span></div>
+            <div class="app-item" onclick="triggerPhoto('icon-weverse')"><div class="icon-box" id="prev-icon-weverse"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><span class="app-name">Weverse</span></div>
+        </div>
+    </div>
+
+    <div id="theme-walls" class="page settings-page">
+        <div class="settings-header"><div onclick="showPage('theme')" style="cursor:pointer;"><svg viewBox="0 0 24 24" style="width:24px; stroke:#000; fill:none; stroke-width:2;"><path d="m15 18-6-6 6-6"/></svg></div><div>修改壁纸</div><div style="width:24px;"></div></div>
+        <div class="settings-group"><div class="settings-card"><div class="settings-item" onclick="triggerPhoto('wallpaper')" style="cursor: pointer;"><label>桌面壁纸</label><span>＞</span></div><div class="settings-item" onclick="triggerPhoto('chat-wallpaper')" style="cursor: pointer;"><label>聊天壁纸</label><span>＞</span></div></div></div>
+    </div>
+
+    <div id="theme-fonts" class="page settings-page">
+        <div class="settings-header"><div onclick="showPage('theme')" style="cursor:pointer;"><svg viewBox="0 0 24 24" style="width:24px; stroke:#000; fill:none; stroke-width:2;"><path d="m15 18-6-6 6-6"/></svg></div><div>字体设置</div><div style="width:24px;"></div></div>
+        <div class="settings-group"><div class="settings-card"><div class="settings-item column"><label>字体链接 (URL)</label><input type="text" id="font-url-input" placeholder="输入外链字体地址" style="width:100%; text-align:left; margin-top:10px;" onblur="saveFontUrl()"></div><div class="settings-item" style="padding: 0;"><div style="flex:1; text-align:center; padding:12px 15px; border-right:1px solid #EEE; cursor:pointer;" onclick="saveFontScheme()">保存方案</div><div style="flex:1; text-align:center; padding:12px 15px; cursor:pointer;" onclick="openFontSchemeModal()">选择方案</div></div></div></div>
+        <div class="settings-group"><div class="settings-card"><div class="settings-item column"><div style="display: flex; justify-content: space-between; width: 100%;"><label>全局字号大小</label><span id="font-size-val" style="color: #888; font-size: calc(14px * var(--font-scale));">100%</span></div><input type="range" id="font-size-slider" min="0.8" max="1.5" step="0.05" value="1" oninput="updateFontSize(this.value)" style="width: 100%; margin-top: 15px;"></div><div class="settings-item"><label>字体颜色</label><div style="display:flex; align-items:center; gap:10px;"><input type="text" id="font-color-hex" style="width:70px; text-align:center; border:1px solid #EEE; border-radius:4px; font-size: 13px;" oninput="updateFontColor(this.value)" placeholder="#000000"><input type="color" id="font-color-picker" style="width:24px; height:24px; padding:0; border:none; border-radius:50%; overflow:hidden; cursor:pointer;" onchange="updateFontColor(this.value)"></div></div></div></div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div id="scheme-list-overlay" class="modal-overlay"><div class="post-modal" style="max-height: 60vh; display: flex; flex-direction: column; padding: 0;"><h4 style="text-align: center; margin: 15px 0; font-size: 16px; font-weight: 700; flex-shrink: 0;">选择 API 方案<br><span style="font-size:11px; font-weight:400; color:#888;">(长按方案可重命名)</span></h4><div id="scheme-list-container" style="flex: 1; overflow-y: auto; border-top: 1px solid #EEE;"></div><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 0; flex-shrink: 0;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666;" onclick="closeSelectSchemeModal()">取消</div></div></div></div>
+    <div id="rename-scheme-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin: 15px; font-size: 16px; font-weight: 700;">重命名方案</h4><input type="text" id="rename-scheme-input" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; margin-bottom: 10px; outline: none; box-sizing: border-box; text-align: left;" placeholder="输入方案名称"><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 5px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeRenameModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #000; font-weight: 600;" onclick="confirmRenameScheme()">确认</div></div></div></div>
+    <div id="font-scheme-list-overlay" class="modal-overlay"><div class="post-modal" style="max-height: 60vh; display: flex; flex-direction: column; padding: 0;"><h4 style="text-align: center; margin: 15px 0; font-size: 16px; font-weight: 700; flex-shrink: 0;">选择 字体 方案<br><span style="font-size:11px; font-weight:400; color:#888;">(长按方案可重命名)</span></h4><div id="font-scheme-list-container" style="flex: 1; overflow-y: auto; border-top: 1px solid #EEE;"></div><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 0; flex-shrink: 0;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666;" onclick="closeFontSchemeModal()">取消</div></div></div></div>
+    <div id="rename-font-scheme-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin: 15px; font-size: 16px; font-weight: 700;">重命名方案</h4><input type="text" id="rename-font-input" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; margin-bottom: 10px; outline: none; box-sizing: border-box; text-align: left;" placeholder="输入方案名称"><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 5px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeRenameFontModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #000; font-weight: 600;" onclick="confirmRenameFontScheme()">确认</div></div></div></div>
+    <div id="new-post-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin-bottom: 15px;">New Post</h4><div id="new-post-img-preview" style="width: 100%; height: 150px; background: #F5F5F5; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; cursor: pointer; background-size: cover; background-position: center; border: 1px dashed #CCC;" onclick="triggerPhoto('new-post-img')"><span style="color: #999; font-size: 16px; font-weight:600;">+ 添加图片</span></div><textarea id="new-post-text" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; outline: none; box-sizing: border-box; resize: none; min-height: 80px;" placeholder="分享这一刻想法..."></textarea><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 15px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeNewPostModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: var(--accent-blue); font-weight: 600;" onclick="submitNewPost()">确认</div></div></div></div>
+    <div id="mock-photo-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin-bottom: 15px;">发送照片描述</h4><textarea id="mock-photo-text" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; outline: none; box-sizing: border-box; resize: none; min-height: 80px;" placeholder="在此输入图片描述（如：这是一只可爱的小猫）..."></textarea><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 15px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeMockPhotoModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: var(--accent-blue); font-weight: 600;" onclick="submitMockPhoto()">确认</div></div></div></div>
+    <div id="voice-overlay" class="modal-overlay"><div class="post-modal"><h4 style="text-align: center; margin-bottom: 15px;">发送语音内容</h4><textarea id="voice-text" style="width: 100%; border: 1px solid #EEE; border-radius: 10px; padding: 10px; outline: none; box-sizing: border-box; resize: none; min-height: 80px;" placeholder="在此输入语音想表达的内容..."></textarea><div class="modal-btns" style="display: flex; border-top: 1px solid #EEE; margin-top: 15px;"><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; border-right: 1px solid #EEE;" onclick="closeVoiceModal()">取消</div><div style="flex: 1; padding: 15px; text-align: center; cursor: pointer; color: var(--accent-blue); font-weight: 600;" onclick="submitVoice()">发送</div></div></div></div>
+
+    <div id="k-my-profile-settings" class="page settings-page">
+        <div class="settings-header">
+            <div onclick="showPage('kakao-profile-detail')" style="cursor:pointer;"><svg viewBox="0 0 24 24" style="width:24px; stroke:#000; fill:none; stroke-width:2;"><path d="m15 18-6-6 6-6"/></svg></div>
+            <div>个人主页设置</div>
+            <div style="width:24px;"></div>
+        </div>
+        <div class="settings-group">
+            <div class="settings-label">基本资料</div>
+            <div class="settings-card">
+                <div class="settings-item"><label>我的姓名</label><input type="text" id="my-global-name" placeholder="输入我的姓名..." oninput="saveMyProfileSettings()"></div>
+                <div class="settings-item column"><label>我的人设</label><textarea id="my-global-persona" class="large-box" placeholder="写下你在所有对话中的全局人设..." oninput="saveMyProfileSettings()"></textarea></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let themeTarget = null;
+        let customFriends = JSON.parse(localStorage.getItem('kkt_friends')) || [];
+        let activeFriendIndex = -1;
+        let activeBubbleFriendIndex = -1;
+        let tempNewFriendAva = null;
+
+        // --- Bubble 数据渲染逻辑 ---
+        function renderBubbleFriends() {
+            const list = document.getElementById('bubble-friend-list');
+            list.innerHTML = customFriends.map((f, i) => `
+                <div class="bubble-item" onclick="openBubbleChatWithFriend(${i})">
+                    <div class="bubble-item-left">
+                        <div class="bubble-ava" style="background-image: url('${f.ava || '微信图片_20260307234707_22_2.jpg'}');"></div>
+                        <div class="bubble-name">${f.name}</div>
+                    </div>
+                    <div class="bubble-status">${f.prompt ? (f.prompt.substring(0, 15) + (f.prompt.length > 15 ? '...' : '')) : ''}</div>
+                </div>
+            `).join('');
+            document.getElementById('bubble-friend-count').innerText = customFriends.length;
+        }
+
+        function saveBubbleProfile() {
+            const name = document.getElementById('bubble-my-name').innerText;
+            const status = document.getElementById('bubble-my-status').innerText;
+            localStorage.setItem('bubble_my_name', name);
+            localStorage.setItem('bubble_my_status', status);
+        }
+
+        // ================== Bubble 聊天核心逻辑 ==================
+        function openBubbleChatWithFriend(index) {
+            activeBubbleFriendIndex = index;
+            const f = customFriends[index];
+            if (!f.bubbleMessages) f.bubbleMessages = [];
+            if (!f.addedTime) {
+                f.addedTime = Date.now(); // 兼容旧数据
+                saveFriends();
+            }
+
+            // 计算相识天数
+            const days = Math.floor((Date.now() - f.addedTime) / (1000 * 60 * 60 * 24)) + 1;
+            document.getElementById('bubble-chat-days').innerText = days;
+            document.getElementById('bubble-chat-header-name').innerText = f.bubbleName || f.name || "ARTIST";
+            document.getElementById('bubble-chat-input').value = ""; 
+
+            renderBubbleMessages();
+            showPage('bubble-chat-view'); 
+        }
+
+        function openBubbleChatSettings() {
+            if (activeBubbleFriendIndex === -1) return;
+            const f = customFriends[activeBubbleFriendIndex];
+            document.getElementById('bubble-set-name').value = f.bubbleName || f.name || '';
+            document.getElementById('bubble-set-prompt').value = f.prompt || '';
+            showPage('bubble-chat-settings');
+        }
+
+        function closeBubbleChatSettings() {
+            renderBubbleMessages();
+            showPage('bubble-chat-view');
+        }
+
+        function updateBubbleActiveFriend(key, val) {
+            if (activeBubbleFriendIndex !== -1) {
+                customFriends[activeBubbleFriendIndex][key] = val;
+                saveFriends();
+                if (key === 'bubbleName' || key === 'name') {
+                    const f = customFriends[activeBubbleFriendIndex];
+                    document.getElementById('bubble-chat-header-name').innerText = f.bubbleName || f.name || "ARTIST";
+                    renderBubbleFriends();
+                }
+                if (key === 'prompt') {
+                    renderCustomFriends(); // 同步回KKT
+                }
+            }
+        }
+
+        async function handleBubbleTranslate(msgIdx) {
+            const f = customFriends[activeBubbleFriendIndex];
+            const msg = f.bubbleMessages[msgIdx];
+            
+            if (!msg.text || msg.isTranslating) return;
+
+            if (msg.bubbleTranslatedText) {
+                msg.bubbleShowTranslation = !msg.bubbleShowTranslation;
+                saveFriends();
+                renderBubbleMessages();
+                return;
+            }
+
+            msg.isTranslating = true;
+            saveFriends();
+            renderBubbleMessages();
+
+            try {
+                const configStr = localStorage.getItem('sys_api_config');
+                let translated = "";
+                if (configStr) {
+                    const config = JSON.parse(configStr);
+                    if (config.key && config.base) {
+                        let fetchUrl = config.base.replace(/\/+$/, '');
+                        if (!fetchUrl.endsWith('/chat/completions')) {
+                            fetchUrl += (fetchUrl.endsWith('/v1') ? '/chat/completions' : '/v1/chat/completions');
+                        }
+                        const response = await fetch(fetchUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${config.key}`
+                            },
+                            body: JSON.stringify({
+                                model: config.model || 'gpt-3.5-turbo',
+                                messages: [{role: 'user', content: `请将以下内容翻译成精准的中文，只需要返回翻译结果，不要任何多余的解释：\n${msg.text}`}],
+                                temperature: 0.3
+                            })
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            translated = data.choices[0].message.content.trim();
+                        } else {
+                            translated = "翻译失败：API请求错误 (" + response.status + ")";
+                        }
+                    } else {
+                        translated = "翻译失败：请先配置有效的 API Key";
+                    }
+                } else {
+                    translated = "翻译失败：请先配置 API";
+                }
+                msg.bubbleTranslatedText = translated;
+                msg.bubbleShowTranslation = true; 
+                msg.isTranslating = false;
+                saveFriends();
+                renderBubbleMessages(); 
+            } catch (error) {
+                msg.bubbleTranslatedText = "翻译请求出错：" + error.message;
+                msg.bubbleShowTranslation = true;
+                msg.isTranslating = false;
+                saveFriends();
+                renderBubbleMessages();
+            }
+        }
+
+        function renderBubbleMessages() {
+            const f = customFriends[activeBubbleFriendIndex];
+            const container = document.getElementById('bubble-chat-content');
+            container.innerHTML = ''; 
+            
+            if (f.bubbleMessages && f.bubbleMessages.length > 0) {
+                f.bubbleMessages.forEach((m, idx) => {
+                    const isUser = m.role === 'user';
+                    
+                    if (isUser) {
+                        let isMessageRead = false;
+                        for (let j = idx + 1; j < f.bubbleMessages.length; j++) {
+                            if (f.bubbleMessages[j].role === 'ai') { isMessageRead = true; break; }
+                        }
+                        
+                        container.innerHTML += `
+                            <div class="msg-wrap msg-right">
+                                <div class="msg-content-area" style="align-items: flex-end;">
+                                    <div class="bubble-row">
+                                        <div class="msg-bubble bubble-msg-user" style="border-radius: 18px; border-top-right-radius: 4px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                            <div class="bubble-msg-plain" style="font-weight: 500;">${m.text}</div>
+                                        </div>
+                                        <div class="msg-meta" style="align-items: flex-end;">
+                                            ${!isMessageRead ? `<div class="msg-read" style="color: #AC81FF; margin-bottom: 2px;">1</div>` : ''}
+                                            <div class="msg-time" style="color: #999;">${m.time}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        const ava = f.ava || '微信图片_20260307234707_22_2.jpg';
+                        
+                        let msgContent = '';
+                        if (m.type === 'text') {
+                            if (m.bubbleShowTranslation && m.bubbleTranslatedText) {
+                                msgContent = `
+                                    <div class="bubble-msg-plain">${m.text}</div>
+                                    <div style="border-top: 1px dashed #E0E0E0; margin: 8px 0; padding-top: 8px;">
+                                        <div class="bubble-msg-plain" style="color: #9659FF;">${m.bubbleTranslatedText}</div>
+                                    </div>
+                                `;
+                            } else if (m.isTranslating) {
+                                msgContent = `
+                                    <div class="bubble-msg-plain">${m.text}</div>
+                                    <div style="border-top: 1px dashed #E0E0E0; margin: 8px 0; padding-top: 8px;">
+                                        <div class="bubble-msg-plain" style="color: #999;">翻译中...</div>
+                                    </div>
+                                `;
+                            } else {
+                                msgContent = `<div class="bubble-msg-plain">${m.text}</div>`;
+                            }
+                        } else if (m.type === 'image') {
+                            msgContent = `<img src="${m.imgUrl}" style="max-width: 230px; max-height: 230px; border-radius: 12px; margin-top: 4px;">`;
+                        }
+
+                        const avatarHtml = `
+                            <div class="bubble-avatar-ring" onclick="activeBubbleFriendIndex=${activeBubbleFriendIndex}; triggerPhoto('set-friend-ava');">
+                                <div style="width: 100%; height: 100%; border-radius: 50%; background-image: url('${ava}'); background-size: cover; border: 2px solid white;"></div>
+                            </div>
+                        `;
+
+                        container.innerHTML += `
+                            <div class="msg-wrap msg-left" style="align-items: flex-start; margin-bottom: 8px;">
+                                ${avatarHtml}
+                                <div class="msg-content-area" style="align-items: flex-start;">
+                                    <div style="display: flex; align-items: center; margin-bottom: 6px;">
+                                        <span class="bubble-artist-badge">ARTIST</span>
+                                        <span style="font-size: 13px; font-weight: 700; color: #000;" class="name-k">${f.bubbleName || f.name}</span>
+                                    </div>
+                                    <div class="bubble-row">
+                                        <div class="msg-bubble" style="background: white; border-radius: 18px; border-top-left-radius: 4px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);" onclick="handleBubbleTranslate(${idx})">
+                                            ${msgContent}
+                                        </div>
+                                        <div class="msg-meta" style="align-items: center; justify-content: flex-end;">
+                                            <div class="msg-time" style="color: #999;">${m.time}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleBubbleEnter(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendBubbleMessage();
+            }
+        }
+
+        function sendBubbleMessage() {
+            const input = document.getElementById('bubble-chat-input');
+            const text = input.value.trim();
+            
+            // 如果输入框为空且点击发送，触发爱豆 AI 回复
+            if(!text) {
+                if (activeBubbleFriendIndex !== -1) fetchBubbleAIResponse(activeBubbleFriendIndex);
+                return;
+            }
+            
+            const f = customFriends[activeBubbleFriendIndex];
+            f.bubbleMessages.push({ role: 'user', type: 'text', text: text, time: getCurrentTimeStr() });
+            input.value = "";
+            saveFriends();
+            renderBubbleMessages();
+        }
+
+        // 爱豆 AI 回复逻辑与随机翻牌 (2-3条渐进式发送)
+        async function fetchBubbleAIResponse(friendIndex) {
+            const f = customFriends[friendIndex];
+            const configStr = localStorage.getItem('sys_api_config');
+            const headerNameEl = document.getElementById('bubble-chat-header-name');
+            const originalName = f.bubbleName || f.name || "ARTIST";
+            
+            if (activeBubbleFriendIndex === friendIndex) {
+                headerNameEl.innerText = "对方正在输入中...";
+            }
+            
+            if (!configStr) {
+                f.bubbleMessages.push({ role: 'ai', type: 'text', text: "[系统提示] 请先配置API", time: getCurrentTimeStr() });
+                saveFriends();
+                if (activeBubbleFriendIndex === friendIndex) {
+                    headerNameEl.innerText = originalName;
+                    renderBubbleMessages();
+                }
+                return;
+            }
+
+            const config = JSON.parse(configStr);
+            if (!config.key || !config.base) return;
+
+            let messages = [];
+            const history = f.bubbleMessages.slice(-20);
+            
+            let systemPrompt = `你现在是一个爱豆，正在使用类似 Bubble（泡泡）的专属聊天软件与粉丝聊天。
+你的角色设定（请仔细读取并严格遵循，这是你聊天的根本）：\n${f.prompt}\n
+[核心回复规则]
+1. 粉丝非常多，这是像发动态一样的日常聊天，**你必须根据人设把你的回复拆分成3条左右的极简短消息，分开发送**。
+2. 绝对不要长篇大论，每条消息只能是非常简短的一句话，符合设定的随性聊天。
+3. **韩国人日常聊天习惯：绝对不要使用句号(。)和逗号(，)！遇到需要停顿断句的地方，请一律用空格代替标点符号。**
+4. **每条独立的消息之间必须用 "|||" 作为唯一的分隔符！** (例如: 밥 먹었어?|||난 오늘 맛있는 거 먹었는데 ㅎㅎ|||보고싶다 다들)
+5. 语气完全贴合人设，不要带任何括号动作描写或机器人的解释说明。直接给出发送的纯文本。`;
+
+            // 查找用户最后一条消息，加入概率翻牌机制
+            let lastUserMsg = null;
+            for (let i = history.length - 1; i >= 0; i--) {
+                if (history[i].role === 'user' && history[i].type === 'text') {
+                    lastUserMsg = history[i].text;
+                    break;
+                }
+            }
+
+            // 40% 的几率触发“翻牌”回复
+            if (lastUserMsg && Math.random() < 0.4) {
+                systemPrompt += `\n5. [触发翻牌] 这次你正好看到了粉丝刚才发的消息：“${lastUserMsg}”。请在你的第一条消息的最开头，使用 “「${lastUserMsg}」\n” （带有全角单引号换行）的格式来引用这句话，然后再接上你的第一句回复！`;
+            }
+
+            messages.push({ role: "system", content: systemPrompt });
+
+            // 追加部分历史记忆（仅作语境参考）
+            history.forEach(m => {
+                let apiRole = m.role === 'ai' ? 'assistant' : 'user';
+                messages.push({ role: apiRole, content: m.text || "[图片/语音暂不支持]" });
+            });
+
+            try {
+                let fetchUrl = config.base.replace(/\/+$/, '');
+                if (!fetchUrl.endsWith('/chat/completions')) fetchUrl += (fetchUrl.endsWith('/v1') ? '/chat/completions' : '/v1/chat/completions');
+
+                const response = await fetch(fetchUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.key}` },
+                    body: JSON.stringify({
+                        model: config.model || 'gpt-3.5-turbo',
+                        messages: messages,
+                        temperature: parseFloat(config.temp) || 1.0,
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.choices && data.choices.length > 0) {
+                        let aiText = data.choices[0].message.content.trim();
+                        
+                        // 按照设定好的分隔符分割消息为多条
+                        let splitMessages = aiText.split('|||').map(s => s.trim()).filter(s => s.length > 0);
+                        
+                        // Fallback: 如果 AI 没按照要求加 |||，而是用了普通换行，且行数不超过4行，就按换行拆分
+                        if (splitMessages.length === 1 && aiText.includes('\n') && aiText.split('\n').length <= 4) {
+                            splitMessages = aiText.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+                        }
+                        
+                        // 异步逐步发出消息 (渐进式发送)
+                        const sendProgressively = async () => {
+                            for (let i = 0; i < splitMessages.length; i++) {
+                                let msgText = splitMessages[i];
+                                
+                                // 解析 AI 是否成功引用了
+                                if (msgText.startsWith('「') && msgText.includes('」')) {
+                                    const quoteEndIdx = msgText.indexOf('」');
+                                    const quoteText = msgText.substring(1, quoteEndIdx);
+                                    const realReply = msgText.substring(quoteEndIdx + 1).trim();
+                                    msgText = `<div class="bubble-quote-block">${quoteText}</div>${realReply}`;
+                                }
+                                
+                                f.bubbleMessages.push({ role: 'ai', type: 'text', text: msgText, time: getCurrentTimeStr() });
+                                saveFriends();
+                                if (activeBubbleFriendIndex === friendIndex) renderBubbleMessages();
+                                
+                                // 延迟 1~2 秒模拟对方正在输入下一条消息
+                                if (i < splitMessages.length - 1) {
+                                    if (activeBubbleFriendIndex === friendIndex) headerNameEl.innerText = "对方正在输入中...";
+                                    await new Promise(r => setTimeout(r, 1200 + Math.random() * 800));
+                                }
+                            }
+                            if (activeBubbleFriendIndex === friendIndex) headerNameEl.innerText = originalName;
+                        };
+                        
+                        sendProgressively();
+                        return; // 提前返回，交由异步循环处理
+                    }
+                }
+            } catch (err) {
+                f.bubbleMessages.push({ role: 'ai', type: 'text', text: `[网络错误] ${err.message}`, time: getCurrentTimeStr() });
+                saveFriends();
+                if (activeBubbleFriendIndex === friendIndex) renderBubbleMessages();
+            }
+            if (activeBubbleFriendIndex === friendIndex) headerNameEl.innerText = originalName;
+        }
+
+        // --- 动态发布逻辑 ---
+        let kakaoPosts = JSON.parse(localStorage.getItem('kkt_posts')) || [];
+        let tempNewPostImg = null;
+
+        function showNewPostModal() {
+            tempNewPostImg = null;
+            document.getElementById('new-post-img-preview').style.backgroundImage = 'none';
+            document.getElementById('new-post-img-preview').innerHTML = '<span style="color: #999; font-size: 16px; font-weight:600;">+ 添加图片</span>';
+            document.getElementById('new-post-text').value = '';
+            document.getElementById('new-post-overlay').style.display = 'flex';
+        }
+
+        function closeNewPostModal() {
+            document.getElementById('new-post-overlay').style.display = 'none';
+        }
+
+        function submitNewPost() {
+            const text = document.getElementById('new-post-text').value.trim();
+            if (!tempNewPostImg && !text) {
+                alert("请添加图片或输入文字作为动态内容");
+                return;
+            }
+            kakaoPosts.unshift({ id: Date.now(), img: tempNewPostImg, text: text });
+            localStorage.setItem('kkt_posts', JSON.stringify(kakaoPosts));
+            renderKakaoPosts();
+            closeNewPostModal();
+        }
+
+        function renderKakaoPosts() {
+            const grid = document.getElementById('k-detail-grid');
+            if (!grid) return;
+            grid.innerHTML = kakaoPosts.map(post => {
+                let bgStyle = '';
+                let textOverlay = '';
+
+                if (post.img) {
+                    bgStyle = `background-image: url('${post.img}'); background-size: cover; background-position: center;`;
+                } else {
+                    bgStyle = `background: linear-gradient(135deg, #D4E1EA 0%, #D4CFD6 100%);`;
+                }
+
+                if (post.text && !post.img) {
+                    textOverlay = `
+                        <div style="
+                            position: absolute; 
+                            top: 50%; left: 50%; transform: translate(-50%, -60%);
+                            background: rgba(255, 255, 255, 0.4);
+                            backdrop-filter: blur(6px);
+                            -webkit-backdrop-filter: blur(6px);
+                            padding: 8px 14px;
+                            border-radius: 14px;
+                            color: #FFF;
+                            font-size: calc(12px * var(--font-scale));
+                            font-weight: 500;
+                            text-align: center;
+                            max-width: 80%;
+                            word-break: break-word;
+                        ">
+                            ${post.text}
+                            <div style="position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid rgba(255, 255, 255, 0.4);"></div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div style="aspect-ratio: 1; background: #F5F5F5; ${bgStyle} position: relative; cursor:pointer; overflow: hidden;" onclick="alert('文案: ${post.text || '(无)'}')">
+                        ${textOverlay}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- 字体美化逻辑 ---
+        let fontSchemes = JSON.parse(localStorage.getItem('font_schemes')) || [];
+        let fontSchemeLongPressTimer = null;
+        let isFontSchemeLongPressing = false;
+        let fontSchemeToRenameId = null;
+
+        function updateFontSize(val) {
+            document.getElementById('font-size-val').innerText = Math.round(val * 100) + '%';
+            localStorage.setItem('theme_font_size', val);
+            applyFontSettings();
+        }
+
+        function updateFontColor(val) {
+            document.getElementById('font-color-hex').value = val;
+            document.getElementById('font-color-picker').value = val;
+            localStorage.setItem('theme_font_color', val);
+            applyFontSettings();
+        }
+
+        function saveFontUrl() {
+            const url = document.getElementById('font-url-input').value.trim();
+            localStorage.setItem('theme_font_url', url);
+            applyFontSettings();
+        }
+
+        function saveFontScheme() {
+            const url = document.getElementById('font-url-input').value.trim();
+            if (!url) { alert('请先输入字体链接 URL'); return; }
+            const name = "字体方案 " + (fontSchemes.length + 1);
+            fontSchemes.push({ id: Date.now(), name, url });
+            localStorage.setItem('font_schemes', JSON.stringify(fontSchemes));
+            alert('已保存字体方案: ' + name);
+        }
+
+        function openFontSchemeModal() {
+            renderFontSchemeList();
+            document.getElementById('font-scheme-list-overlay').style.display = 'flex';
+        }
+        function closeFontSchemeModal() { document.getElementById('font-scheme-list-overlay').style.display = 'none'; }
+
+        function renderFontSchemeList() {
+            const list = document.getElementById('font-scheme-list-container');
+            if (fontSchemes.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding: 30px; color:#999; font-size:14px;">暂无保存的方案</div>';
+                return;
+            }
+            list.innerHTML = fontSchemes.map(s => `
+                <div class="scheme-item" 
+                     onmousedown="handleFontSchemeTouchStart(event, ${s.id})" 
+                     onmouseup="handleFontSchemeTouchEnd(event, ${s.id})" 
+                     onmouseleave="cancelFontSchemeTouch()"
+                     ontouchstart="handleFontSchemeTouchStart(event, ${s.id})" 
+                     ontouchend="handleFontSchemeTouchEnd(event, ${s.id})" 
+                     ontouchcancel="cancelFontSchemeTouch()"
+                     oncontextmenu="event.preventDefault()">
+                    ${s.name}
+                </div>
+            `).join('');
+        }
+
+        function handleFontSchemeTouchStart(e, id) {
+            isFontSchemeLongPressing = false;
+            fontSchemeLongPressTimer = setTimeout(() => {
+                isFontSchemeLongPressing = true;
+                openRenameFontModal(id);
+            }, 600);
+        }
+        function handleFontSchemeTouchEnd(e, id) {
+            clearTimeout(fontSchemeLongPressTimer);
+            if (!isFontSchemeLongPressing) { applyFontScheme(id); }
+            setTimeout(() => isFontSchemeLongPressing = false, 100);
+        }
+        function cancelFontSchemeTouch() { clearTimeout(fontSchemeLongPressTimer); }
+
+        function applyFontScheme(id) {
+            const s = fontSchemes.find(x => x.id === id);
+            if (s) {
+                document.getElementById('font-url-input').value = s.url;
+                saveFontUrl();
+                closeFontSchemeModal();
+            }
+        }
+
+        function openRenameFontModal(id) {
+            fontSchemeToRenameId = id;
+            const s = fontSchemes.find(x => x.id === id);
+            if (s) {
+                document.getElementById('rename-font-input').value = s.name;
+                document.getElementById('font-scheme-list-overlay').style.display = 'none';
+                document.getElementById('rename-font-scheme-overlay').style.display = 'flex';
+            }
+        }
+        function closeRenameFontModal() {
+            document.getElementById('rename-font-scheme-overlay').style.display = 'none';
+            document.getElementById('font-scheme-list-overlay').style.display = 'flex';
+            fontSchemeToRenameId = null;
+        }
+        function confirmRenameFontScheme() {
+            const newName = document.getElementById('rename-font-input').value.trim();
+            if (newName && fontSchemeToRenameId) {
+                const s = fontSchemes.find(x => x.id === fontSchemeToRenameId);
+                if (s) s.name = newName;
+                localStorage.setItem('font_schemes', JSON.stringify(fontSchemes));
+            }
+            closeRenameFontModal();
+            renderFontSchemeList();
+        }
+
+        function applyFontSettings() {
+            const fontUrl = localStorage.getItem('theme_font_url') || '';
+            const fontSize = localStorage.getItem('theme_font_size') || '1';
+            const fontColor = localStorage.getItem('theme_font_color') || '';
+
+            // 同步表单 UI
+            document.getElementById('font-url-input').value = fontUrl;
+            document.getElementById('font-size-slider').value = fontSize;
+            document.getElementById('font-size-val').innerText = Math.round(fontSize * 100) + '%';
+            if (fontColor) {
+                document.getElementById('font-color-hex').value = fontColor;
+                document.getElementById('font-color-picker').value = fontColor;
+            }
+
+            document.documentElement.style.setProperty('--font-scale', fontSize);
+
+            let styleStr = '';
+            if (fontUrl) {
+                styleStr += `
+                    @font-face { font-family: 'CustomUserFont'; src: url('${fontUrl}'); }
+                    body, * { font-family: 'CustomUserFont', -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif !important; }
+                `;
+            }
+            if (fontColor) {
+                styleStr += `
+                    .nickname, .user-id, .bio, .app-name, .widget-text, .title, .name, .name-k, .settings-item label, .original-text { color: ${fontColor} !important; }
+                `;
+            }
+
+            let styleTag = document.getElementById('dynamic-theme-style');
+            if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamic-theme-style';
+                document.head.appendChild(styleTag);
+            }
+            styleTag.innerHTML = styleStr;
+        }
+
+
+        // --- API 方案逻辑 ---
+        let apiSchemes = JSON.parse(localStorage.getItem('api_schemes')) || [];
+        let schemeLongPressTimer = null;
+        let isSchemeLongPressing = false;
+        let schemeToRenameId = null;
+
+        function saveCurrentScheme() {
+            const base = document.getElementById('api-base').value.trim();
+            const key = document.getElementById('api-key').value.trim();
+            if (!base && !key) { alert("请先填写API地址和Key"); return; }
+            const name = "方案 " + (apiSchemes.length + 1);
+            apiSchemes.push({ id: Date.now(), name, base, key });
+            localStorage.setItem('api_schemes', JSON.stringify(apiSchemes));
+            alert("已保存当前方案: " + name);
+        }
+
+        function openSelectSchemeModal() {
+            renderSchemeList();
+            document.getElementById('scheme-list-overlay').style.display = 'flex';
+        }
+        function closeSelectSchemeModal() { document.getElementById('scheme-list-overlay').style.display = 'none'; }
+
+        function renderSchemeList() {
+            const list = document.getElementById('scheme-list-container');
+            if (apiSchemes.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding: 30px; color:#999; font-size:14px;">暂无保存的方案</div>';
+                return;
+            }
+            list.innerHTML = apiSchemes.map(s => `
+                <div class="scheme-item" 
+                     onmousedown="handleSchemeTouchStart(event, ${s.id})" 
+                     onmouseup="handleSchemeTouchEnd(event, ${s.id})" 
+                     onmouseleave="cancelSchemeTouch()"
+                     ontouchstart="handleSchemeTouchStart(event, ${s.id})" 
+                     ontouchend="handleSchemeTouchEnd(event, ${s.id})" 
+                     ontouchcancel="cancelSchemeTouch()"
+                     oncontextmenu="event.preventDefault()">
+                    ${s.name}
+                </div>
+            `).join('');
+        }
+
+        function handleSchemeTouchStart(e, id) {
+            isSchemeLongPressing = false;
+            schemeLongPressTimer = setTimeout(() => {
+                isSchemeLongPressing = true;
+                openRenameModal(id);
+            }, 600);
+        }
+
+        function handleSchemeTouchEnd(e, id) {
+            clearTimeout(schemeLongPressTimer);
+            if (!isSchemeLongPressing) { applyScheme(id); }
+            setTimeout(() => isSchemeLongPressing = false, 100);
+        }
+
+        function cancelSchemeTouch() { clearTimeout(schemeLongPressTimer); }
+
+        function applyScheme(id) {
+            const s = apiSchemes.find(x => x.id === id);
+            if (s) {
+                document.getElementById('api-base').value = s.base;
+                document.getElementById('api-key').value = s.key;
+                saveSysSettings();
+                closeSelectSchemeModal();
+            }
+        }
+
+        function openRenameModal(id) {
+            schemeToRenameId = id;
+            const s = apiSchemes.find(x => x.id === id);
+            if (s) {
+                document.getElementById('rename-scheme-input').value = s.name;
+                document.getElementById('scheme-list-overlay').style.display = 'none';
+                document.getElementById('rename-scheme-overlay').style.display = 'flex';
+            }
+        }
+        function closeRenameModal() {
+            document.getElementById('rename-scheme-overlay').style.display = 'none';
+            document.getElementById('scheme-list-overlay').style.display = 'flex';
+            schemeToRenameId = null;
+        }
+
+        function confirmRenameScheme() {
+            const newName = document.getElementById('rename-scheme-input').value.trim();
+            if (newName && schemeToRenameId) {
+                const s = apiSchemes.find(x => x.id === schemeToRenameId);
+                if (s) s.name = newName;
+                localStorage.setItem('api_schemes', JSON.stringify(apiSchemes));
+            }
+            closeRenameModal();
+            renderSchemeList();
+        }
+
+        // --- 系统设置与 API 拉取 ---
+        async function pullModels() {
+            const base = document.getElementById('api-base').value.trim();
+            const key = document.getElementById('api-key').value.trim();
+            const btn = document.getElementById('btn-pull-models');
+            
+            if (!base || !key) { alert("请先填写 API 地址和 API Key"); return; }
+            
+            let fetchUrl = base.replace(/\/+$/, '');
+            if (!fetchUrl.endsWith('/models')) {
+                fetchUrl += (fetchUrl.endsWith('/v1') ? '/models' : '/v1/models');
+            }
+            
+            btn.innerText = "正在拉取...";
+            try {
+                const response = await fetch(fetchUrl, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${key}` }
+                });
+                
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`HTTP 错误: ${response.status} - ${errText.substring(0, 50)}`);
+                }
+                
+                const data = await response.json();
+                const modelSelect = document.getElementById('api-model');
+                
+                modelSelect.innerHTML = '';
+                
+                if (data.data && Array.isArray(data.data)) {
+                    data.data.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.innerText = m.id;
+                        modelSelect.appendChild(opt);
+                    });
+                    alert(`成功拉取 ${data.data.length} 个模型!`);
+                    saveSysSettings();
+                } else {
+                    alert("获取的数据格式不符合 OpenAI 标准:\n" + JSON.stringify(data).substring(0, 100));
+                }
+            } catch (err) {
+                alert("拉取模型失败 (请检查地址、网络或跨域设置): \n" + err.message);
+            } finally {
+                btn.innerText = "拉取模型";
+            }
+        }
+
+        function saveSysSettings() {
+            const config = {
+                base: document.getElementById('api-base').value,
+                key: document.getElementById('api-key').value,
+                model: document.getElementById('api-model').value,
+                temp: document.getElementById('api-temp').value,
+                memory: document.getElementById('api-memory').value,
+                darkMode: document.getElementById('sys-dark-mode').checked
+            };
+            localStorage.setItem('sys_api_config', JSON.stringify(config));
+        }
+
+        function loadSysSettings() {
+            const configStr = localStorage.getItem('sys_api_config');
+            if (configStr) {
+                const config = JSON.parse(configStr);
+                document.getElementById('api-base').value = config.base || "";
+                document.getElementById('api-key').value = config.key || "";
+                
+                if (config.model) {
+                    const opt = document.createElement('option');
+                    opt.value = config.model;
+                    opt.innerText = config.model;
+                    document.getElementById('api-model').appendChild(opt);
+                    document.getElementById('api-model').value = config.model;
+                }
+                
+                document.getElementById('api-temp').value = config.temp !== undefined ? config.temp : 1.0;
+                document.getElementById('temp-val').innerText = document.getElementById('api-temp').value;
+                document.getElementById('api-memory').value = config.memory !== undefined ? config.memory : 50;
+                
+                const isDark = config.darkMode || false;
+                document.getElementById('sys-dark-mode').checked = isDark;
+                toggleDarkMode(isDark);
+            }
+        }
+        
+        function toggleDarkMode(isDark) {
+            if (isDark) document.body.classList.add('dark-mode');
+            else document.body.classList.remove('dark-mode');
+        }
+
+        function showPage(p) { 
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active')); 
+            document.getElementById(p).classList.add('active'); 
+        }
+
+        // ================== 全局个人设置同步逻辑 ==================
+        function openMyProfileSettings() {
+            const savedKName = localStorage.getItem('kkt_my_name') || document.getElementById('txt-nickname').innerText;
+            const savedPersona = localStorage.getItem('kkt_my_persona') || '';
+            document.getElementById('my-global-name').value = savedKName;
+            document.getElementById('my-global-persona').value = savedPersona;
+            showPage('k-my-profile-settings');
+        }
+
+        function saveMyProfileSettings() {
+            const newName = document.getElementById('my-global-name').value.trim();
+            const newPersona = document.getElementById('my-global-persona').value.trim();
+            
+            if (newName !== "") {
+                localStorage.setItem('kkt_my_name', newName);
+                document.getElementById('txt-nickname').innerText = newName;
+                document.getElementById('k-my-name').innerText = newName;
+                if (document.getElementById('k-detail-name')) {
+                    document.getElementById('k-detail-name').innerText = newName;
+                }
+            }
+            localStorage.setItem('kkt_my_persona', newPersona);
+        }
+        // ================== 结束 ==================
+
+        // --- 聊天逻辑 与 附件菜单拓展 ---
+        
+        function toggleAttachMenu() {
+            if (isMultiSelectMode) return;
+            const menu = document.getElementById('chat-attach-menu');
+            if (menu.style.display === 'none' || menu.style.display === '') {
+                menu.style.display = 'grid';
+                setTimeout(() => {
+                    const container = document.getElementById('chat-content');
+                    container.scrollTop = container.scrollHeight;
+                }, 50);
+            } else {
+                menu.style.display = 'none';
+            }
+        }
+
+        function openMockPhotoModal() {
+            document.getElementById('mock-photo-text').value = '';
+            document.getElementById('mock-photo-overlay').style.display = 'flex';
+        }
+        function closeMockPhotoModal() { document.getElementById('mock-photo-overlay').style.display = 'none'; }
+        function submitMockPhoto() {
+            const text = document.getElementById('mock-photo-text').value.trim();
+            if(!text) { alert("请输入图片描述"); return; }
+            const f = customFriends[activeFriendIndex];
+            f.messages.push({ role: 'user', type: 'photo_mock', text: text, time: getCurrentTimeStr() });
+            saveFriends();
+            renderMessages();
+            closeMockPhotoModal();
+            toggleAttachMenu();
+            updateChatTime(activeFriendIndex);
+        }
+
+        function handleChatImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const imgData = ev.target.result;
+                const f = customFriends[activeFriendIndex];
+                f.messages.push({ role: 'user', type: 'image', imgUrl: imgData, time: getCurrentTimeStr() });
+                saveFriends();
+                renderMessages();
+                toggleAttachMenu();
+                updateChatTime(activeFriendIndex);
+            };
+            reader.readAsDataURL(file);
+            e.target.value = ''; 
+        }
+
+        function openVoiceModal() {
+            document.getElementById('voice-text').value = '';
+            document.getElementById('voice-overlay').style.display = 'flex';
+        }
+        function closeVoiceModal() { document.getElementById('voice-overlay').style.display = 'none'; }
+        function submitVoice() {
+            const text = document.getElementById('voice-text').value.trim();
+            if(!text) { alert("请输入语音想表达的内容"); return; }
+            const f = customFriends[activeFriendIndex];
+            f.messages.push({ role: 'user', type: 'voice', text: text, time: getCurrentTimeStr() });
+            saveFriends();
+            renderMessages();
+            closeVoiceModal();
+            toggleAttachMenu();
+            updateChatTime(activeFriendIndex);
+        }
+
+        function openTransferModal() {
+            document.getElementById('transfer-amount').value = '';
+            document.getElementById('transfer-note').value = '';
+            document.getElementById('transfer-overlay').style.display = 'flex';
+        }
+        function closeTransferModal() { document.getElementById('transfer-overlay').style.display = 'none'; }
+        function submitTransfer() {
+            let amountVal = document.getElementById('transfer-amount').value.trim();
+            const note = document.getElementById('transfer-note').value.trim();
+            if(!amountVal) { alert("请输入金额"); return; }
+            
+            amountVal = parseInt(amountVal, 10).toLocaleString(); 
+            
+            const f = customFriends[activeFriendIndex];
+            f.messages.push({ role: 'user', type: 'transfer', amount: amountVal, note: note, time: getCurrentTimeStr() });
+            saveFriends();
+            renderMessages();
+            closeTransferModal();
+            toggleAttachMenu();
+            updateChatTime(activeFriendIndex);
+        }
+
+        function showTransferDetail(amount) {
+            if (isMultiSelectMode || isLongPressTriggered) return;
+            document.getElementById('transfer-detail-amount').innerText = amount + '원';
+            document.getElementById('transfer-detail-overlay').style.display = 'flex';
+        }
+        function closeTransferDetailModal() { document.getElementById('transfer-detail-overlay').style.display = 'none'; }
+
+        function getVoiceDuration(text) {
+            const chars = text ? text.length : 1;
+            let secs = Math.ceil(chars * 0.25); 
+            if (secs < 1) secs = 1;
+            if (secs > 599) secs = 599; 
+            return Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, '0');
+        }
+
+        let playingVoiceIdx = null;
+        let voiceInterval = null;
+
+        function playVoiceSafe(e, idx) {
+            if (isMultiSelectMode) return;
+            if (isLongPressTriggered) return;
+
+            const bg = document.getElementById(`voice-bg-${idx}`);
+            const btn = document.getElementById(`voice-btn-${idx}`);
+            if (!bg || !btn) return;
+
+            if (playingVoiceIdx === idx) {
+                clearInterval(voiceInterval);
+                bg.style.width = '0%';
+                btn.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                playingVoiceIdx = null;
+                return;
+            }
+
+            if (playingVoiceIdx !== null) {
+                const oldBg = document.getElementById(`voice-bg-${playingVoiceIdx}`);
+                const oldBtn = document.getElementById(`voice-btn-${playingVoiceIdx}`);
+                if (oldBg) oldBg.style.width = '0%';
+                if (oldBtn) oldBtn.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                clearInterval(voiceInterval);
+            }
+
+            const f = customFriends[activeFriendIndex];
+            const msg = f.messages[idx];
+            const durStr = msg.duration || getVoiceDuration(msg.text);
+            const parts = durStr.split(':');
+            const totalSecs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+
+            playingVoiceIdx = idx;
+            btn.innerHTML = '<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';
+            
+            let progress = 0;
+            bg.style.transition = 'none';
+            bg.style.width = '0%';
+            
+            const tickRate = 50; 
+            const increment = 100 / (totalSecs * (1000 / tickRate));
+
+            setTimeout(() => {
+                bg.style.transition = 'width 0.05s linear';
+                voiceInterval = setInterval(() => {
+                    progress += increment;
+                    if (progress >= 100) {
+                        progress = 100;
+                        bg.style.width = progress + '%';
+                        clearInterval(voiceInterval);
+                        setTimeout(() => {
+                            bg.style.transition = 'width 0.2s ease';
+                            bg.style.width = '0%';
+                            btn.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                            playingVoiceIdx = null;
+                        }, 300);
+                    } else {
+                        bg.style.width = progress + '%';
+                    }
+                }, tickRate);
+            }, 50);
+        }
+
+        function regenerateLastAI() {
+            const f = customFriends[activeFriendIndex];
+            if (!f.messages || f.messages.length === 0) return;
+            
+            let lastMsg = f.messages[f.messages.length - 1];
+            if (lastMsg.role === 'ai') {
+                f.messages.pop(); 
+            }
+            saveFriends();
+            renderMessages();
+            toggleAttachMenu();
+            fetchAIResponse(activeFriendIndex);
+        }
+
+        let bubblePressTimer = null;
+        let isLongPressTriggered = false;
+        let targetMsgIdx = -1;
+        let isMultiSelectMode = false;
+        let selectedMsgs = new Set();
+
+        function onBubbleStart(e, idx) {
+            if (isMultiSelectMode) return;
+            isLongPressTriggered = false;
+            bubblePressTimer = setTimeout(() => {
+                isLongPressTriggered = true;
+                openMsgActionMenu(idx);
+            }, 600); 
+        }
+        function onBubbleEnd(e) { if (bubblePressTimer) clearTimeout(bubblePressTimer); }
+        function handleBubbleContextMenu(e, idx) {
+            if (isMultiSelectMode) return;
+            e.preventDefault();
+            isLongPressTriggered = true;
+            openMsgActionMenu(idx);
+        }
+
+        function openMsgActionMenu(idx) {
+            targetMsgIdx = idx;
+            const menu = document.getElementById('msg-action-menu');
+            const popup = document.getElementById('action-popup-box');
+            
+            menu.style.display = 'block'; 
+            
+            const bubble = document.getElementById('bubble-' + idx);
+            if (bubble) {
+                const rect = bubble.getBoundingClientRect();
+                let top = rect.bottom + 8;
+                let left = rect.left;
+                
+                const wrap = bubble.closest('.msg-wrap');
+                const isRight = wrap && wrap.classList.contains('msg-right');
+                
+                popup.style.visibility = 'hidden';
+                popup.style.left = '0px';
+                popup.style.top = '0px';
+                
+                setTimeout(() => {
+                    const popupRect = popup.getBoundingClientRect();
+                    
+                    if (isRight) left = rect.right - popupRect.width;
+                    if (left < 15) left = 15;
+                    if (left + popupRect.width > window.innerWidth - 15) { left = window.innerWidth - popupRect.width - 15; }
+                    if (top + popupRect.height > window.innerHeight - 20) { top = rect.top - popupRect.height - 8; }
+                    
+                    popup.style.left = left + 'px';
+                    popup.style.top = top + 'px';
+                    popup.style.visibility = 'visible';
+                }, 0);
+            }
+        }
+
+        function closeMsgActionMenu() {
+            document.getElementById('msg-action-menu').style.display = 'none';
+            setTimeout(() => { isLongPressTriggered = false; }, 100);
+        }
+
+        function actionCopy() {
+            const f = customFriends[activeFriendIndex];
+            const msg = f.messages[targetMsgIdx];
+            const textToCopy = msg.text || '';
+            const tempInput = document.createElement("textarea");
+            tempInput.value = textToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            closeMsgActionMenu();
+        }
+
+        function actionEdit() {
+            closeMsgActionMenu();
+            const f = customFriends[activeFriendIndex];
+            const msg = f.messages[targetMsgIdx];
+            document.getElementById('edit-msg-text').value = msg.text || '';
+            document.getElementById('edit-msg-overlay').style.display = 'flex';
+        }
+        function closeEditMsgModal() { document.getElementById('edit-msg-overlay').style.display = 'none'; }
+        function confirmEditMsg() {
+            const newVal = document.getElementById('edit-msg-text').value.trim();
+            if (newVal !== "") {
+                const f = customFriends[activeFriendIndex];
+                f.messages[targetMsgIdx].text = newVal;
+                f.messages[targetMsgIdx].translatedText = null;
+                f.messages[targetMsgIdx].showTranslation = false;
+                saveFriends();
+                renderMessages();
+            }
+            closeEditMsgModal();
+        }
+
+        function actionQuote() {
+            const f = customFriends[activeFriendIndex];
+            const msg = f.messages[targetMsgIdx];
+            const text = msg.text || '';
+            let shortText = text.substring(0, 25);
+            if (text.length > 25) shortText += '...';
+            
+            const input = document.getElementById('chat-input');
+            input.value = `「${shortText}」\n` + input.value;
+            toggleSendIcon();
+            closeMsgActionMenu();
+            input.focus();
+        }
+
+        function actionMultiSelect() {
+            closeMsgActionMenu();
+            isMultiSelectMode = true;
+            selectedMsgs.clear();
+            document.querySelector('.chat-input-bar').style.display = 'none';
+            document.getElementById('chat-attach-menu').style.display = 'none';
+            document.getElementById('multi-select-bar').style.display = 'flex';
+            renderMessages();
+        }
+
+        function toggleMsgSelection(idx) {
+            if (!isMultiSelectMode) return;
+            if (selectedMsgs.has(idx)) selectedMsgs.delete(idx);
+            else selectedMsgs.add(idx);
+            document.getElementById('sel-count').innerText = selectedMsgs.size;
+            renderMessages();
+        }
+
+        function exitMultiSelectMode() {
+            isMultiSelectMode = false;
+            selectedMsgs.clear();
+            document.querySelector('.chat-input-bar').style.display = 'flex';
+            document.getElementById('multi-select-bar').style.display = 'none';
+            renderMessages();
+        }
+
+        let isDeletingMulti = false;
+
+        function actionDelete() {
+            closeMsgActionMenu();
+            isDeletingMulti = false;
+            document.getElementById('delete-confirm-text').innerText = '确认要删除这条消息吗？';
+            document.getElementById('delete-confirm-overlay').style.display = 'flex';
+        }
+
+        function promptDeleteSelected() {
+            if (selectedMsgs.size === 0) return;
+            isDeletingMulti = true;
+            document.getElementById('delete-confirm-text').innerText = `确认要删除选中的 ${selectedMsgs.size} 条消息吗？`;
+            document.getElementById('delete-confirm-overlay').style.display = 'flex';
+        }
+
+        function closeDeleteConfirmModal() { document.getElementById('delete-confirm-overlay').style.display = 'none'; }
+        function confirmDeleteMsg() {
+            const f = customFriends[activeFriendIndex];
+            if (isDeletingMulti) {
+                f.messages = f.messages.filter((_, i) => !selectedMsgs.has(i));
+                exitMultiSelectMode();
+            } else {
+                f.messages.splice(targetMsgIdx, 1);
+            }
+            saveFriends();
+            renderMessages();
+            closeDeleteConfirmModal();
+        }
+
+        function handleTranslateSafe(element, idx) {
+            if (isMultiSelectMode || isLongPressTriggered) return;
+            handleTranslate(element, idx);
+        }
+
+        function alertSafe(text) {
+            if (isMultiSelectMode || isLongPressTriggered) return;
+            alert(text);
+        }
+
+        function promptDeleteFriend() { document.getElementById('delete-friend-overlay').style.display = 'flex'; }
+        function closeDeleteFriendModal() { document.getElementById('delete-friend-overlay').style.display = 'none'; }
+        function confirmDeleteFriend() {
+            customFriends.splice(activeFriendIndex, 1);
+            saveFriends();
+            closeDeleteFriendModal();
+            closeChatSettings();
+            showPage('kakao');
+            renderCustomFriends();
+        }
+
+        function promptBlockFriend() {
+            const isBlocked = customFriends[activeFriendIndex].isBlocked || false;
+            if (isBlocked) { unblockFriend(); return; }
+            document.getElementById('block-friend-modal-title').innerText = '确认拉黑好友？';
+            document.getElementById('block-friend-overlay').style.display = 'flex';
+        }
+        function closeBlockFriendModal() { document.getElementById('block-friend-overlay').style.display = 'none'; }
+        function confirmBlockFriend() {
+            customFriends[activeFriendIndex].isBlocked = true;
+            saveFriends();
+            closeBlockFriendModal();
+            closeChatSettings();
+            openChatWithFriend(activeFriendIndex);
+        }
+        function unblockFriend() {
+            customFriends[activeFriendIndex].isBlocked = false;
+            saveFriends();
+            if (document.getElementById('chat-settings').classList.contains('active')) {
+                const blockLabel = document.getElementById('block-friend-label');
+                if (blockLabel) blockLabel.innerText = "拉黑好友";
+            }
+            openChatWithFriend(activeFriendIndex);
+        }
+
+        function openChatWithFriend(index) { 
+            activeFriendIndex = index;
+            const f = customFriends[index];
+            if (!f.messages) f.messages = [];
+            
+            document.getElementById('chat-header-name').innerText = f.note || f.name;
+            document.getElementById('chat-input').value = ""; 
+            toggleSendIcon(); 
+            
+            exitMultiSelectMode();
+            document.getElementById('chat-attach-menu').style.display = 'none';
+
+            if (f.isBlocked) {
+                document.querySelector('.chat-bottom-wrapper').style.display = 'none';
+                document.getElementById('blocked-bottom-banner').style.display = 'block';
+                document.getElementById('blocked-top-banner-container').style.display = 'block';
+            } else {
+                document.querySelector('.chat-bottom-wrapper').style.display = 'block';
+                document.getElementById('blocked-bottom-banner').style.display = 'none';
+                document.getElementById('blocked-top-banner-container').style.display = 'none';
+            }
+
+            renderMessages();
+            showPage('chat-view'); 
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function getCurrentTimeStr() {
+            const now = new Date();
+            return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        }
+
+        function toggleSendIcon() {
+            const val = document.getElementById('chat-input').value.trim();
+            const btn = document.getElementById('btn-mic-send');
+            if(val) {
+                btn.innerHTML = `<svg viewBox="0 0 24 24" stroke="none" fill="var(--kakao-yellow)"><circle cx="12" cy="12" r="12"/></svg><svg viewBox="0 0 24 24" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; width:14px !important; height:14px !important;"><line x1="12" y1="18" x2="12" y2="6"/><polyline points="6 12 12 6 18 12"/></svg>`;
+                btn.style.position = 'relative';
+            } else {
+                btn.innerHTML = `<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+                btn.style.position = '';
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) {
+                if (activeFriendIndex !== -1) fetchAIResponse(activeFriendIndex);
+                return;
+            }
+            
+            const f = customFriends[activeFriendIndex];
+            const timeStr = getCurrentTimeStr();
+            
+            f.messages.push({ role: 'user', type: 'text', text: text, time: timeStr });
+            input.value = "";
+            toggleSendIcon(); 
+            document.getElementById('chat-attach-menu').style.display = 'none';
+            saveFriends();
+            renderMessages();
+            updateChatTime(activeFriendIndex);
+            
+            setTimeout(() => {
+                const container = document.getElementById('chat-content');
+                if (container) container.scrollTop = container.scrollHeight;
+            }, 50);
+        }
+
+        async function fetchAIResponse(friendIndex) {
+            const f = customFriends[friendIndex];
+            const configStr = localStorage.getItem('sys_api_config');
+            const headerNameEl = document.getElementById('chat-header-name');
+            const originalName = f.note || f.name;
+
+            if (activeFriendIndex === friendIndex) headerNameEl.innerText = "对方正在输入中...";
+
+            if (!configStr) {
+                setTimeout(() => {
+                    f.messages.push({ role: 'ai', type: 'text', text: "系统提示：请先在主页设置中配置有效的 API 地址和 Key。", time: getCurrentTimeStr() });
+                    saveFriends();
+                    if (activeFriendIndex === friendIndex) { headerNameEl.innerText = originalName; renderMessages(); }
+                }, 1000);
+                return;
+            }
+
+            const config = JSON.parse(configStr);
+            if (!config.key || !config.base) {
+                setTimeout(() => {
+                    f.messages.push({ role: 'ai', type: 'text', text: "系统提示：API Key 或地址未配置完整。", time: getCurrentTimeStr() });
+                    saveFriends();
+                    if (activeFriendIndex === friendIndex) { headerNameEl.innerText = originalName; renderMessages(); }
+                }, 1000);
+                return;
+            }
+
+            let messages = [];
+            const now = new Date();
+            const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            const timeOptions = { hour: '2-digit', minute: '2-digit' };
+            const currentDateStr = now.toLocaleDateString('zh-CN', dateOptions);
+            const currentTimeStr = now.toLocaleTimeString('zh-CN', timeOptions);
+
+            let systemPrompt = `[系统参考] 当前现实时间：${currentDateStr} ${currentTimeStr} (请作为隐性背景感知，仅在必要时顺口提及，绝对不要句句强调时间)。
+[核心要求] 你是一个活生生的人，拥有自己的生活、情绪和记忆。绝对不要表现出你是AI的痕迹，不要解释，不要使用(*笑*之类的)机器语言。
+[排版与聊天习惯要求] 
+1. **基于用户的设定，像真人聊天一样，将回复拆分成3条左右的短消息发出。绝对不要长篇大论，每次只发一句话！**
+2. **韩国人的聊天风格：绝对不要使用句号(。)和逗号(，)！遇到需要停顿的地方，请直接用空格代替标点符号。**
+3. **每条消息之间必须用 "|||" 分隔！** (例如: 도착했어?|||나 방금 앉았어|||너무 피곤하다)\n`;
+            
+            const globalPersona = localStorage.getItem('kkt_my_persona');
+            if (globalPersona) systemPrompt += `我的全局人设（与你对话的我）：\n${globalPersona}\n`;
+            const updateNetwork = () => {
+                const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const typeEl = document.getElementById('status-network');
+                if (conn && conn.effectiveType) {
+                    let type = conn.effectiveType;
+                    if (type === '4g' || type === '5g') {
+                        typeEl.innerText = '5G'; 
+                    } else if (type === 'wifi') {
+                        typeEl.innerText = 'Wi-Fi';
+                    } else {
+                        typeEl.innerText = type.toUpperCase();
+                    }
+                } else {
+                    typeEl.innerText = '5G';
+                }
+            };
+            if (navigator.connection) navigator.connection.addEventListener('change', updateNetwork);
+            updateNetwork();
+        }
+
+        function startAutoMessageTask() {
+            setInterval(() => {
+                const now = Date.now();
+                customFriends.forEach((f, idx) => {
+                    if (f.autoMessage && f.nextAutoMessageTime && now >= f.nextAutoMessageTime) {
+                        triggerAutoMessage(idx);
+                        updateChatTime(idx);
+                    }
+                });
+            }, 60000); 
+        }
+
+        async function triggerAutoMessage(friendIndex) {
+            const f = customFriends[friendIndex];
+            const configStr = localStorage.getItem('sys_api_config');
+            if (!configStr) return;
+            const config = JSON.parse(configStr);
+            if (!config.key || !config.base) return;
+
+            let messages = [];
+            const now = new Date();
+            const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            const timeOptions = { hour: '2-digit', minute: '2-digit' };
+            const currentDateStr = now.toLocaleDateString('zh-CN', dateOptions);
+            const currentTimeStr = now.toLocaleTimeString('zh-CN', timeOptions);
+
+            let systemPrompt = `[系统参考] 当前时间：${currentDateStr} ${currentTimeStr}。\n[特殊主动指令] 你大概已经有超过3个小时没和对方说话了。请你主动开启新的话题、表达关心或分享日常。
+[聊天习惯要求]
+1. 必须将回复拆分成3条左右的极简短消息发出，绝对不要长篇大论，每条只能有一句话。
+2. 韩国人日常聊天习惯：绝对不要使用句号(。)和逗号(，)，一律用空格代替断句。
+3. 消息之间必须用 "|||" 分隔！语气完全贴合角色设定，不可带有任何机器动作或解释。\n`;
+            
+            const globalPersona = localStorage.getItem('kkt_my_persona');
+            if (globalPersona) systemPrompt += `我的全局人设（对方）：\n${globalPersona}\n`;
+
+            if (f.prompt) systemPrompt += `你的角色设定：\n${f.prompt}\n`;
+            if (f.persona) systemPrompt += `我针对此对话的特定人设补充：\n${f.persona}\n`;
+            if (f.worldbook) systemPrompt += `世界观：\n${f.worldbook}\n`;
+
+            if (systemPrompt.trim()) {
+                messages.push({ role: "system", content: systemPrompt });
+            }
+
+            const memoryLimit = parseInt(config.memory) || 50;
+            const history = f.messages.slice(-memoryLimit);
+            history.forEach(m => {
+                let apiRole = m.role === 'ai' ? 'assistant' : 'user';
+                
+                if (m.type === 'image' && m.imgUrl) {
+                    messages.push({
+                        role: apiRole,
+                        content: [
+                            { type: "text", text: "请识别并结合人设回复这张图片：" },
+                            { type: "image_url", image_url: { url: m.imgUrl } }
+                        ]
+                    });
+                } else if (m.type === 'photo_mock') {
+                    messages.push({ role: apiRole, content: `[用户发送了一张照片，内容描述为：${m.text}]` });
+                } else if (m.type === 'voice') {
+                    messages.push({ role: apiRole, content: `[用户发送一条语音，内容为：${m.text}]` });
+                } else if (m.type === 'transfer') {
+                    messages.push({ role: apiRole, content: `[收到一笔转账：${m.amount} 韩元，备注：${m.note || '无'}]` });
+                } else {
+                    messages.push({ role: apiRole, content: m.text });
+                }
+            });
+
+            try {
+                let fetchUrl = config.base.replace(/\/+$/, '');
+                if (!fetchUrl.endsWith('/chat/completions')) {
+                    fetchUrl += (fetchUrl.endsWith('/v1') ? '/chat/completions' : '/v1/chat/completions');
+                }
+
+                const response = await fetch(fetchUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.key}` },
+                    body: JSON.stringify({
+                        model: config.model || 'gpt-3.5-turbo',
+                        messages: messages,
+                        temperature: parseFloat(config.temp) || 1.0,
+                        top_p: 1.0,
+                        frequency_penalty: 0,
+                        presence_penalty: 0
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.choices && data.choices.length > 0) {
+                        const aiText = data.choices[0].message.content.trim();
+                        f.messages.push({ role: 'ai', type: 'text', text: aiText, time: getCurrentTimeStr() });
+                    } else {
+                        f.messages.push({ role: 'ai', type: 'text', text: `[API返回异常: 未找到回复内容]`, time: getCurrentTimeStr() });
+                    }
+                } else {
+                    const errData = await response.text();
+                    let errMsg = `[API错误: ${response.status}]`;
+                    try {
+                        const parsedErr = JSON.parse(errData);
+                        if (parsedErr.error && parsedErr.error.message) errMsg += ` ${parsedErr.error.message}`;
+                    } catch(e) { errMsg += ` ${errData.substring(0, 60)}...`; }
+                    f.messages.push({ role: 'ai', type: 'text', text: errMsg, time: getCurrentTimeStr() });
+                }
+            } catch (err) {
+                f.messages.push({ role: 'ai', type: 'text', text: `[网络请求失败: ${err.message}] 请检查API地址或跨域设置。`, time: getCurrentTimeStr() });
+            }
+
+            updateChatTime(friendIndex);
+            saveFriends();
+            if (activeFriendIndex === friendIndex) {
+                headerNameEl.innerText = originalName;
+                renderMessages();
+            }
+        }
+
+        async function translateVoiceMsg(idx) {
+            const f = customFriends[activeFriendIndex];
+            const msg = f.messages[idx];
+            if (msg.translatedText) return;
+
+            try {
+                const configStr = localStorage.getItem('sys_api_config');
+                let translated = "翻译失败：请配置API";
+                if (configStr) {
+                    const config = JSON.parse(configStr);
+                    if (config.key && config.base) {
+                        let fetchUrl = config.base.replace(/\/+$/, '');
+                        if (!fetchUrl.endsWith('/chat/completions')) {
+                            fetchUrl += (fetchUrl.endsWith('/v1') ? '/chat/completions' : '/v1/chat/completions');
+                        }
+                        const response = await fetch(fetchUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.key}` },
+                            body: JSON.stringify({
+                                model: config.model || 'gpt-3.5-turbo',
+                                messages: [{role: 'user', content: `请将以下内容翻译成精准的中文，只需要返回翻译结果，不要任何多余的解释：\n${msg.text}`}],
+                                temperature: 0.3
+                            })
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            translated = data.choices[0].message.content.trim();
+                        } else {
+                            translated = "翻译失败：API请求错误";
+                        }
+                    }
+                }
+                msg.translatedText = translated;
+                msg.showTranslation = true;
+                saveFriends();
+                const transDiv = document.getElementById(`voice-trans-${idx}`);
+                if(transDiv) transDiv.innerText = translated;
+                else renderMessages();
+            } catch (e) {
+                msg.translatedText = "翻译出错";
+                msg.showTranslation = true;
+                saveFriends();
+                renderMessages();
+            }
+        }
+
+        async function handleTranslate(element, msgIdx) {
+            const f = customFriends[activeFriendIndex];
+            const msg = f.messages[msgIdx];
+
+            if (msg.translatedText) {
+                msg.showTranslation = !msg.showTranslation;
+                saveFriends();
+                renderMessages();
+                return;
+            }
+
+            const originalText = msg.text;
+            element.innerHTML = `<div class="original-text" style="line-height: 1.5;">${originalText}</div><div class="translate-divider"></div><div class="translated-text">翻译中...</div>`;
+
+            try {
+                const configStr = localStorage.getItem('sys_api_config');
+                let translated = "";
+                if (configStr) {
+                    const config = JSON.parse(configStr);
+                    if (config.key && config.base) {
+                        let fetchUrl = config.base.replace(/\/+$/, '');
+                        if (!fetchUrl.endsWith('/chat/completions')) {
+                            fetchUrl += (fetchUrl.endsWith('/v1') ? '/chat/completions' : '/v1/chat/completions');
+                        }
+                        const response = await fetch(fetchUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${config.key}`
+                            },
+                            body: JSON.stringify({
+                                model: config.model || 'gpt-3.5-turbo',
+                                messages: [{role: 'user', content: `请将以下内容翻译成精准的中文，只需要返回翻译结果，不要任何多余的解释：\n${originalText}`}],
+                                temperature: 0.3
+                            })
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            translated = data.choices[0].message.content.trim();
+                        } else {
+                            translated = "翻译失败：API请求错误 (" + response.status + ")";
+                        }
+                    } else {
+                        translated = "翻译失败：请先配置有效的 API Key";
+                    }
+                } else {
+                    translated = "翻译失败：请先配置 API";
+                }
+                msg.translatedText = translated;
+                msg.showTranslation = true; 
+                saveFriends();
+                renderMessages(); 
+            } catch (error) {
+                msg.translatedText = "翻译请求出错：" + error.message;
+                msg.showTranslation = true;
+                saveFriends();
+                renderMessages();
+            }
+        }
+
+        function renderMessages() {
+            const f = customFriends[activeFriendIndex];
+            const container = document.getElementById('chat-content');
+            const myAva = localStorage.getItem('img_avatar-img') || '微信图片_20260307234707_22_2.jpg';
+            
+            container.innerHTML = ''; 
+            
+            if (f.messages && f.messages.length > 0) {
+                const now = new Date();
+                const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const dateString = now.toLocaleDateString('en-US', dateOptions);
+                container.innerHTML = `<div class="date-bubble">${dateString}</div>`;
+                
+                f.messages.forEach((m, idx) => {
+                    const isUser = m.role === 'user';
+                    let showAva = true;
+                    if(f.hideAva) {
+                        if(f.hideMode === 'both') showAva = false;
+                        if(f.hideMode === 'mine' && isUser) showAva = false;
+                        if(f.hideMode === 'friend' && !isUser) showAva = false;
+                    }
+
+                    const ava = isUser ? myAva : (f.ava || '微信图片_20260307234707_22_2.jpg');
+                    const displayName = isUser ? "Me" : (f.note || f.name);
+
+                    let isMessageRead = false;
+                    if (isUser) {
+                        for (let j = idx + 1; j < f.messages.length; j++) {
+                            if (f.messages[j].role === 'ai') { isMessageRead = true; break; }
+                        }
+                    }
+
+                    let multiSelectCheckbox = '';
+                    let wrapperClick = '';
+                    let bubbleEvents = '';
+                    let inlinePointerStyle = '';
+                    
+                    if (isMultiSelectMode) {
+                        multiSelectCheckbox = `
+                            <div style="display:flex; align-items:center; margin-right:10px; flex-shrink:0;">
+                                <div style="width:22px; height:22px; border-radius:50%; border:1px solid ${selectedMsgs.has(idx) ? 'var(--accent-blue)' : '#CCC'}; display:flex; justify-content:center; align-items:center; background:${selectedMsgs.has(idx) ? 'var(--accent-blue)' : 'transparent'};">
+                                    ${selectedMsgs.has(idx) ? '<svg viewBox="0 0 24 24" style="width:14px; stroke:white; fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+                                </div>
+                            </div>
+                        `;
+                        wrapperClick = `onclick="toggleMsgSelection(${idx})"`;
+                        inlinePointerStyle = 'pointer-events: none;';
+                    } else {
+                        bubbleEvents = `
+                            onmousedown="onBubbleStart(event, ${idx})"
+                            onmouseup="onBubbleEnd(event)"
+                            onmouseleave="onBubbleEnd(event)"
+                            ontouchstart="onBubbleStart(event, ${idx})"
+                            ontouchend="onBubbleEnd(event)"
+                            ontouchmove="onBubbleEnd(event)"
+                            ontouchcancel="onBubbleEnd(event)"
+                            oncontextmenu="handleBubbleContextMenu(event, ${idx})"
+                        `;
+                    }
+
+                    let bubbleContent = '';
+                    let clickEvent = '';
+                    let extraAttributes = '';
+                    
+                    if (m.type === 'photo_mock') {
+                        const safeText = m.text ? m.text.replace(/'/g, "\\'") : '';
+                        bubbleContent = `<div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                                            <svg viewBox="0 0 24 24" style="width:40px;height:40px;stroke:#888;fill:none;stroke-width:1.5;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                            <span style="font-size:10px;color:#999;">[点击查看图片]</span>
+                                         </div>`;
+                        clickEvent = `onclick="alertSafe('图片描述: ${safeText}')"`;
+                        if(!isMultiSelectMode) inlinePointerStyle += 'cursor:pointer;';
+                    } else if (m.type === 'image') {
+                        bubbleContent = `<img src="${m.imgUrl}" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`;
+                    } else if (m.type === 'transfer') {
+                        extraAttributes = 'data-type="transfer"';
+                        let displayAmount = m.amount || "0";
+                        let displayNote = m.note || "송금 받기 전까지 보낸 분은 내역 상세화면에서 취소할 수 있어요.";
+                        
+                        const heartBearSvg = `
+                            <svg class="transfer-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M30,50 C30,20 70,20 70,50 C75,70 80,80 80,100 L20,100 C20,80 25,70 30,50 Z" fill="#B38B59"/>
+                                <circle cx="35" cy="35" r="9" fill="#B38B59"/>
+                                <circle cx="65" cy="35" r="9" fill="#B38B59"/>
+                                <circle cx="42" cy="45" r="3.5" fill="#000"/>
+                                <circle cx="58" cy="45" r="3.5" fill="#000"/>
+                                <ellipse cx="50" cy="53" rx="10" ry="7.5" fill="#FFF"/>
+                                <circle cx="50" cy="50" r="3" fill="#000"/>
+                                <ellipse cx="32" cy="50" rx="4" ry="2.5" fill="#FF8DA1" opacity="0.8"/>
+                                <ellipse cx="68" cy="50" rx="4" ry="2.5" fill="#FF8DA1" opacity="0.8"/>
+                                <path d="M35,30 A12,12 0 0,1 50,30 A12,12 0 0,1 65,30 Q65,45 50,60 Q35,45 35,30 Z" fill="#FFB6C1" transform="translate(-10, -5) scale(1.1) rotate(-15 50 45)"/>
+                                <path d="M70,55 Q80,45 60,35" fill="none" stroke="#B38B59" stroke-width="7" stroke-linecap="round"/>
+                            </svg>
+                        `;
+
+                        bubbleContent = `
+                            <div class="transfer-bubble">
+                                <div class="transfer-top">
+                                    <div class="transfer-title">송금보내요</div>
+                                    ${heartBearSvg}
+                                </div>
+                                <div class="transfer-bottom">
+                                    <div class="transfer-amount">${displayAmount}원을 보냈어요.</div>
+                                    <div class="transfer-note">${displayNote}</div>
+                                    <div class="transfer-action" onclick="showTransferDetail('${displayAmount}')">
+                                        <div class="transfer-kpay"><div class="transfer-kpay-dot">P</div> 카카오페이</div>
+                                        <div class="transfer-action-text">내역 보기 <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else if (m.type === 'voice') {
+                        extraAttributes = 'data-type="voice"';
+                        let progressId = `voice-bg-${idx}`;
+                        let btnId = `voice-btn-${idx}`;
+                        let durStr = m.duration || getVoiceDuration(m.text);
+                        
+                        bubbleContent = `
+                            <div style="display:flex; flex-direction:column; min-width:180px;">
+                                <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; position:relative;">
+                                    <div id="${progressId}" style="position:absolute; left:0; top:0; height:100%; width:0%; background:rgba(0,0,0,0.05); z-index:0; border-radius:inherit;"></div>
+                                    <div id="${btnId}" style="width:30px; height:30px; border-radius:50%; background:${isUser ? '#000' : 'var(--accent-blue)'}; display:flex; justify-content:center; align-items:center; cursor:pointer; z-index:1;" onclick="playVoiceSafe(event, ${idx})">
+                                        <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#FFF;"><path d="M8 5v14l11-7z"/></svg>
+                                    </div>
+                                    <div style="flex:1; z-index:1;">
+                                        <div style="height:3px; background:#E0E0E0; border-radius:2px; position:relative; overflow:hidden;">
+                                            <div style="position:absolute; left:0; top:0; height:100%; width:0%; background:${isUser ? '#000' : 'var(--accent-blue)'};"></div>
+                                        </div>
+                                    </div>
+                                    <div style="font-size:12px; color:#999; z-index:1; font-variant-numeric: tabular-nums;">${durStr}</div>
+                                </div>
+                                ${!isUser && f.autoTranslate ? `<div style="border-top:1px solid rgba(0,0,0,0.05); padding:8px 14px; font-size:13px; color:#666;" onclick="translateVoiceMsg(${idx})" id="voice-trans-${idx}">${m.translatedText || '点击翻译此语音...'}</div>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        if (m.showTranslation && m.translatedText) {
+                            bubbleContent = `<div class="original-text" style="line-height: 1.5;">${m.text}</div><div class="translate-divider"></div><div class="translated-text">${m.translatedText}</div>`;
+                        } else if (m.isTranslating) {
+                            bubbleContent = `<div class="original-text" style="line-height: 1.5;">${m.text}</div><div class="translate-divider"></div><div class="translated-text" style="color:#999;">翻译中...</div>`;
+                        } else {
+                            bubbleContent = m.text || '';
+                        }
+                        
+                        if (!isUser) {
+                            clickEvent = `onclick="handleTranslateSafe(this, ${idx})"`;
+                            if(!isMultiSelectMode) inlinePointerStyle += 'cursor:pointer;';
+                        }
+                    }
+
+                    let translateBtnHtml = '';
+
+                    container.innerHTML += `
+                        <div class="msg-wrap ${isUser ? 'msg-right' : 'msg-left'}">
+                            ${multiSelectCheckbox}
+                            ${!isUser && showAva ? `<div class="msg-ava" style="background-image: url('${ava}');" onclick="activeFriendIndex=${activeFriendIndex}; triggerPhoto('set-friend-ava');"></div>` : (!isUser ? `<div style="width:40px; flex-shrink:0;"></div>` : '')}
+                            <div class="msg-content-area" ${wrapperClick} style="${inlinePointerStyle}">
+                                ${!isUser && !f.hideAva ? `<div class="msg-nick">${displayName}</div>` : ''}
+                                <div class="bubble-row">
+                                    <div id="bubble-${idx}" class="msg-bubble" ${extraAttributes} ${clickEvent} ${bubbleEvents}>
+                                        ${bubbleContent}
+                                    </div>
+                                    <div class="msg-meta">
+                                        ${isUser && (!f.showRead || f.showRead) && !isMessageRead ? '<div class="msg-read">1</div>' : ''}
+                                        ${translateBtnHtml}
+                                        ${(!f.showTime || f.showTime) ? `<div class="msg-time">${m.time}</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function toggleWorldbook() {
+            const wb = document.getElementById('set-worldbook');
+            const txt = document.getElementById('wb-toggle-text');
+            if (wb.style.display === 'block') {
+                wb.style.display = 'none';
+                txt.innerText = '▶ 点击展开世界书设定...';
+            } else {
+                wb.style.display = 'block';
+                txt.innerText = '▼ 收起世界书';
+            }
+        }
+
+        function updateChatTime(friendIdx) {
+            const f = customFriends[friendIdx];
+            if (f.messages && f.messages.length > 0) {
+                f.lastTime = f.messages[f.messages.length - 1].time;
+            }
+            saveFriends();
+            renderCustomFriends();
+        }
+
+        function openChatSettings() {
+            const f = customFriends[activeFriendIndex];
+            document.getElementById('set-name').value = f.name || '';
+            document.getElementById('set-note').value = f.note || '';
+            document.getElementById('set-prompt').value = f.prompt || '';
+            document.getElementById('set-persona').value = f.persona || '';
+            document.getElementById('set-worldbook').value = f.worldbook || '';
+            document.getElementById('set-auto-translate').checked = f.autoTranslate || false;
+            document.getElementById('set-auto-message').checked = f.autoMessage || false;
+            document.getElementById('set-show-time').checked = f.showTime !== false;
+            document.getElementById('set-show-read').checked = f.showRead !== false;
+            document.getElementById('set-hide-ava').checked = f.hideAva || false;
+            document.getElementById('set-hide-mode').value = f.hideMode || 'mine';
+            
+            document.getElementById('set-friend-ava').style.backgroundImage = `url('${f.ava || '微信图片_20260307234707_22_2.jpg'}')`;
+            const myAva = localStorage.getItem('img_avatar-img') || '微信图片_20260307234707_22_2.jpg';
+            document.getElementById('set-my-ava').style.backgroundImage = `url('${myAva}')`;
+            
+            const blockLabel = document.getElementById('block-friend-label');
+            if (f.isBlocked) { blockLabel.innerText = "取消拉黑"; } else { blockLabel.innerText = "拉黑好友"; }
+            
+            document.getElementById('chat-settings').classList.add('active');
+        }
+
+        function closeChatSettings() { document.getElementById('chat-settings').classList.remove('active'); }
+
+        function updateActiveFriend(key, val) {
+            if (activeFriendIndex !== -1) {
+                customFriends[activeFriendIndex][key] = val;
+                saveFriends();
+                if (key === 'note' || key === 'name') {
+                    const f = customFriends[activeFriendIndex];
+                    document.getElementById('chat-header-name').innerText = f.note || f.name;
+                    renderCustomFriends();
+                }
+                if (key === 'hideAva' || key === 'hideMode' || key === 'showTime' || key === 'showRead' || key === 'autoTranslate') {
+                    renderMessages();
+                }
+            }
+        }
+
+        function toggleKakaoAddMenu() {
+            const menu = document.getElementById('kakao-add-menu');
+            menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+        }
+
+        function showAddFriendModal() {
+            toggleKakaoAddMenu();
+            tempNewFriendAva = null;
+            document.getElementById('new-friend-ava').style.backgroundImage = 'var(--default-avatar)';
+            document.getElementById('new-friend-name').value = '';
+            document.getElementById('new-friend-note').value = '';
+            document.getElementById('new-friend-prompt').value = '';
+            document.getElementById('add-friend-overlay').style.display = 'flex';
+        }
+
+        function closeAddFriendModal() { document.getElementById('add-friend-overlay').style.display = 'none'; }
+
+        function submitNewFriend() {
+            const name = document.getElementById('new-friend-name').value.trim();
+            const note = document.getElementById('new-friend-note').value.trim();
+            const prompt = document.getElementById('new-friend-prompt').value.trim();
+            if(!name) { alert("请输入好友姓名"); return; }
+            
+            customFriends.push({
+                name: name, note: note, prompt: prompt,
+                ava: tempNewFriendAva || '微信图片_20260307234707_22_2.jpg',
+                messages: [], bubbleMessages: [], addedTime: Date.now()
+            });
+            saveFriends();
+            renderCustomFriends();
+            renderBubbleFriends();
+            closeAddFriendModal();
+        }
+
+        function renderCustomFriends() {
+            const list = document.getElementById('kakao-friend-list');
+            let html = customFriends.map((f, i) => `
+                <div class="kakao-item" onclick="openChatWithFriend(${i})">
+                    <div class="icon-box-k" style="background-image: url('${f.ava || '微信图片_20260307234707_22_2.jpg'}'); flex-shrink: 0;"></div>
+                    <div class="content-k">
+                        <div class="name-k" style="font-weight:700;">${f.note || f.name} ${f.isBlocked ? '<span style="color:#FF3B30; font-size:10px;">(已拉黑)</span>' : ''}</div>
+                        <div class="status-k" style="color:#666;">${f.messages && f.messages.length > 0 ? (f.messages[f.messages.length-1].type === 'image' ? '[图片]' : (f.messages[f.messages.length-1].type === 'voice' ? '[语音]' : (f.messages[f.messages.length-1].type === 'transfer' ? '[转账]' : f.messages[f.messages.length-1].text))) : (f.prompt ? f.prompt.substring(0,20)+'...' : '')}</div>
+                    </div>
+                    <div style="font-size:calc(11px * var(--font-scale)); color:#999;">${f.lastTime || ''}</div>
+                </div>
+            `).join('');
+            
+            // 追加“邀请朋友”固定栏位，完美复刻原图
+            html += `
+                <div class="kakao-item" style="cursor: default; padding: 10px 20px;">
+                    <div class="icon-box-k" style="border-radius: 16px; background: #F0F0F0; width: 44px; height: 44px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+                        <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; stroke: #999; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;"><rect x="3" y="6" width="18" height="12" rx="2" ry="2"></rect><path d="M3 6l9 6 9-6"></path></svg>
+                    </div>
+                    <div class="content-k" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                        <div class="name-k" style="font-size: calc(16px * var(--font-scale)); font-weight: 600; color: #111; margin: 0;">邀请朋友使用 KakaoTalk</div>
+                    </div>
+                </div>
+            `;
+            
+            list.innerHTML = html;
+            
+            const countDisplay = document.getElementById('friend-count-display');
+            if (countDisplay) {
+                countDisplay.innerText = customFriends.length;
+            }
+
+            // 更新 Bubble 好友页面
+            renderBubbleFriends();
+        }
+
+        function saveFriends() { localStorage.setItem('kkt_friends', JSON.stringify(customFriends)); }
+
+        function saveHomeName() {
+            const name = document.getElementById('txt-nickname').innerText;
+            localStorage.setItem('home_nickname', name);
+            syncHomeNameToKakao();
+        }
+        function syncHomeNameToKakao() {
+            const name = document.getElementById('txt-nickname').innerText;
+            document.getElementById('k-my-name').innerText = name;
+            localStorage.setItem('kkt_my_name', name);
+        }
+        function saveKakaoName() {
+            const name = document.getElementById('k-my-name').innerText;
+            localStorage.setItem('kkt_my_name', name);
+            syncKakaoNameToHome();
+        }
+        function syncKakaoNameToHome() {
+            const name = document.getElementById('k-my-name').innerText;
+            document.getElementById('txt-nickname').innerText = name;
+            localStorage.setItem('home_nickname', name);
+        }
+
+        function triggerPhoto(id) {
+            themeTarget = id;
+            document.getElementById('file-input').click();
+        }
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const url = ev.target.result;
+                if (themeTarget === 'banner-img') {
+                    document.getElementById('banner-img').style.backgroundImage = `url('${url}')`;
+                    localStorage.setItem('img_banner', url);
+                } else if (themeTarget === 'avatar-img') {
+                    document.getElementById('avatar-img').style.backgroundImage = `url('${url}')`;
+                    document.getElementById('k-my-ava').style.backgroundImage = `url('${url}')`;
+                    document.getElementById('k-detail-ava').style.backgroundImage = `url('${url}')`;
+                    localStorage.setItem('img_avatar-img', url);
+                    
+                    if (document.getElementById('set-my-ava')) document.getElementById('set-my-ava').style.backgroundImage = `url('${url}')`;
+                    renderMessages();
+                } else if (themeTarget === 'bubble-my-ava') {
+                    document.getElementById('bubble-my-ava').style.backgroundImage = `url('${url}')`;
+                    localStorage.setItem('bubble_my_ava', url);
+                } else if (themeTarget === 'wallpaper') {
+                    document.body.style.backgroundImage = `url('${url}')`;
+                    localStorage.setItem('img_wallpaper', url);
+                    alert("桌面壁纸已更新");
+                } else if (themeTarget === 'chat-wallpaper') {
+                    document.documentElement.style.setProperty('--chat-bg-img', `url('${url}')`);
+                    localStorage.setItem('img_chat_wallpaper', url);
+                    alert("聊天壁纸已更新");
+                } else if (themeTarget === 'new-friend-ava') {
+                    tempNewFriendAva = url;
+                    document.getElementById('new-friend-ava').style.backgroundImage = `url('${url}')`;
+                } else if (themeTarget === 'set-friend-ava') {
+                    document.getElementById('set-friend-ava').style.backgroundImage = `url('${url}')`;
+                    if (activeFriendIndex !== -1) {
+                        customFriends[activeFriendIndex].ava = url;
+                        saveFriends();
+                        renderCustomFriends();
+                        renderMessages();
+                    } else if (activeBubbleFriendIndex !== -1) {
+                        customFriends[activeBubbleFriendIndex].ava = url;
+                        saveFriends();
+                        renderBubbleFriends();
+                        renderBubbleMessages();
+                    }
+                } else if (themeTarget === 'k-detail-bg') {
+                    document.getElementById('k-detail-bg').style.backgroundImage = `url('${url}')`;
+                    localStorage.setItem('k_detail_bg', url);
+                } else if (themeTarget === 'k-detail-ava') {
+                    document.getElementById('k-detail-ava').style.backgroundImage = `url('${url}')`;
+                    document.getElementById('avatar-img').style.backgroundImage = `url('${url}')`;
+                    document.getElementById('k-my-ava').style.backgroundImage = `url('${url}')`;
+                    localStorage.setItem('img_avatar-img', url);
+                } else if (themeTarget === 'new-post-img') {
+                    tempNewPostImg = url;
+                    document.getElementById('new-post-img-preview').style.backgroundImage = `url('${url}')`;
+                    document.getElementById('new-post-img-preview').innerHTML = '';
+                } else if (themeTarget && themeTarget.startsWith('icon-')) {
+                    document.getElementById(themeTarget).style.backgroundImage = `url('${url}')`;
+                    document.getElementById(themeTarget).innerHTML = '';
+                    
+                    const prevId = 'prev-' + themeTarget;
+                    if(document.getElementById(prevId)) {
+                        document.getElementById(prevId).style.backgroundImage = `url('${url}')`;
+                        document.getElementById(prevId).innerHTML = '';
+                    }
+                    localStorage.setItem('img_' + themeTarget, url);
+                }
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+
+        window.onload = function() {
+            // Load theme images
+            const ids = ['banner-img', 'avatar-img', 'wallpaper', 'chat-wallpaper', 'icon-settings', 'icon-theme', 'icon-kakao', 'icon-ins', 'icon-bubble', 'icon-weibo', 'icon-x', 'icon-weverse', 'k_detail_bg', 'bubble_my_ava'];
+            ids.forEach(id => {
+                const stored = localStorage.getItem(id.startsWith('img_') || id.startsWith('k_') || id.startsWith('bubble_') ? id : 'img_' + id);
+                if (stored) {
+                    if (id === 'avatar-img') {
+                        document.getElementById('avatar-img').style.backgroundImage = `url('${stored}')`;
+                        document.getElementById('k-my-ava').style.backgroundImage = `url('${stored}')`;
+                        if(document.getElementById('k-detail-ava')) document.getElementById('k-detail-ava').style.backgroundImage = `url('${stored}')`;
+                    } else if (id === 'wallpaper') {
+                        document.body.style.backgroundImage = `url('${stored}')`;
+                    } else if (id === 'chat-wallpaper') {
+                        document.documentElement.style.setProperty('--chat-bg-img', `url('${stored}')`);
+                    } else if (id === 'k_detail_bg') {
+                        if(document.getElementById('k-detail-bg')) document.getElementById('k-detail-bg').style.backgroundImage = `url('${stored}')`;
+                    } else if (id === 'bubble_my_ava') {
+                        if(document.getElementById('bubble-my-ava')) document.getElementById('bubble-my-ava').style.backgroundImage = `url('${stored}')`;
+                    } else if (id.startsWith('icon-')) {
+                        const el = document.getElementById(id);
+                        if(el) { el.style.backgroundImage = `url('${stored}')`; el.innerHTML = ''; }
+                        const prevEl = document.getElementById('prev-' + id);
+                        if(prevEl) { prevEl.style.backgroundImage = `url('${stored}')`; prevEl.innerHTML = ''; }
+                    } else {
+                        const el = document.getElementById(id);
+                        if (el) el.style.backgroundImage = `url('${stored}')`;
+                    }
+                }
+            });
+
+            // Load texts
+            const homeName = localStorage.getItem('home_nickname');
+            if (homeName) { document.getElementById('txt-nickname').innerText = homeName; }
+            const kakaoName = localStorage.getItem('kkt_my_name');
+            if (kakaoName) { 
+                document.getElementById('k-my-name').innerText = kakaoName; 
+                if(document.getElementById('k-detail-name')) document.getElementById('k-detail-name').innerText = kakaoName;
+            }
+            
+            const bName = localStorage.getItem('bubble_my_name');
+            if (bName) document.getElementById('bubble-my-name').innerText = bName;
+            const bStatus = localStorage.getItem('bubble_my_status');
+            if (bStatus) document.getElementById('bubble-my-status').innerText = bStatus;
+
+            loadSysSettings();
+            applyFontSettings();
+            renderCustomFriends();
+            renderBubbleFriends();
+            renderKakaoPosts();
+
+            // Status Bar clock
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('status-time').innerText = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            }, 1000);
+            
+            document.addEventListener('click', (e) => {
+                const addMenu = document.getElementById('kakao-add-menu');
+                if (addMenu && addMenu.style.display === 'block' && !e.target.closest('.icons')) {
+                    addMenu.style.display = 'none';
+                }
+            });
+        };
+    </script>
+</body>
+</html>
